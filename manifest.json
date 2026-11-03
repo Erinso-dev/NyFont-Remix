@@ -1,10 +1,10 @@
 {
-  "display_name": "Ny字体管理器 · 增强版",
+  "display_name": "Ny字体管理器（二改版）",
   "loading_order": 55,
   "requires": [],
   "optional": [],
   "js": "index.js",
   "css": "style.css",
-  "author": "Ny",
+  "author": "Erinso_",
   "version": "2.5.0"
 }
