@@ -243,6 +243,9 @@ const FONT_GROUP_LABELS = {
 };
 
 const FONT_GROUP_ORDER = ['generic', 'chinese', 'english', 'imported'];
+
+// 内置字体分组默认折叠（用户平时用不到）
+const collapsedFontGroups = new Set(['generic', 'chinese']);
 const GENERIC_FONT_FAMILIES = new Set([
     'serif',
     'sans-serif',
@@ -1117,12 +1120,43 @@ function renderFontPopupList(popupEl, filterText, onSelect) {
 
     filtered.forEach(opt => {
         if (opt.group !== lastGroup) {
+            const group = opt.group;
+            const isCollapsed = collapsedFontGroups.has(group);
+            const groupCount = filtered.filter((o) => o.group === group).length;
+
             const groupHeader = document.createElement('div');
-            groupHeader.className = 'nytw-font-group-header';
-            groupHeader.textContent = FONT_GROUP_LABELS[opt.group] || opt.group;
+            groupHeader.className = 'nytw-font-group-header is-collapsible';
+            if (isCollapsed) groupHeader.classList.add('is-collapsed');
+
+            const arrow = document.createElement('span');
+            arrow.className = 'nytw-group-arrow';
+            arrow.textContent = isCollapsed ? '▸' : '▾';
+
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'nytw-group-label';
+            labelSpan.textContent = FONT_GROUP_LABELS[group] || group;
+
+            const countSpan = document.createElement('span');
+            countSpan.className = 'nytw-group-count';
+            countSpan.textContent = String(groupCount);
+
+            groupHeader.appendChild(arrow);
+            groupHeader.appendChild(labelSpan);
+            groupHeader.appendChild(countSpan);
+
+            groupHeader.addEventListener('mousedown', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (collapsedFontGroups.has(group)) collapsedFontGroups.delete(group);
+                else collapsedFontGroups.add(group);
+                renderFontPopupList(popupEl, filterText, onSelect);
+            });
+
             popupEl.appendChild(groupHeader);
-            lastGroup = opt.group;
+            lastGroup = group;
         }
+
+        if (collapsedFontGroups.has(opt.group)) return;
 
         const row = document.createElement('div');
         row.className = 'nytw-font-option';
@@ -1238,9 +1272,16 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
         });
     }
 
-    inputEl.addEventListener('blur', () => {
-        setTimeout(hidePopup, 200);
-    });
+    // 以前是失焦 200ms 就关，导致在弹层里滚动/挑选时被强制关闭。
+    // 现在改成「点了弹层和输入框以外的地方才关」。
+    const onDocPointerDown = (event) => {
+        if (!popupEl.classList.contains('is-open')) return;
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        if (popupEl.contains(target) || inputEl.contains(target)) return;
+        hidePopup();
+    };
+    document.addEventListener('pointerdown', onDocPointerDown, true);
 }
 
 function setupFontPicker(inputEl, popupEl, onSave) {
