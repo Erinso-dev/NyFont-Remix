@@ -452,8 +452,11 @@ function buildReadingStyleCss() {
     // 左右内边距（分别设置，用于补偿美化自带的不对称留白）
     const padDeclarations = [];
     if (hasReadingStyleValue(values.readingPadLeft) || hasReadingStyleValue(values.readingPadRight)) {
-        padDeclarations.push('padding-left:var(--nytw-pad-left,0) !important;');
-        padDeclarations.push('padding-right:var(--nytw-pad-right,0) !important;');
+        // 正值：内缩（padding）；负值：外扩（负 margin）
+        padDeclarations.push('padding-left:max(0em,var(--nytw-pad-left,0)) !important;');
+        padDeclarations.push('padding-right:max(0em,var(--nytw-pad-right,0)) !important;');
+        padDeclarations.push('margin-left:min(0em,var(--nytw-pad-left,0)) !important;');
+        padDeclarations.push('margin-right:min(0em,var(--nytw-pad-right,0)) !important;');
     }
     pushReadingRule(css, ['#chat .mes_text'], padDeclarations);
     if (padDeclarations.length) {

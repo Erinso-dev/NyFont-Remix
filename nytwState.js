@@ -237,7 +237,8 @@ export function clampOptionalTextIndent(value) {
 export function clampOptionalReadingPad(value) {
     const num = parseOptionalNumber(value);
     if (num === null) return null;
-    const clamped = Math.min(12, Math.max(0, num));
+    // 正值＝内缩（padding），负值＝外扩（负 margin），范围 -24 ~ 24em
+    const clamped = Math.min(24, Math.max(-24, num));
     return Math.round(clamped * 100) / 100; // 0.01em steps
 }
 

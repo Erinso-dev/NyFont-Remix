@@ -1546,7 +1546,7 @@
 .nytw-stepper {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
     min-width: 0;
     background: transparent;
     border: none;
@@ -1568,19 +1568,23 @@
 }
 
 .nytw-stepper-btn {
-    width: 22px;
-    height: 28px;
+    width: 20px;
+    height: 26px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: transparent;
+    background: rgba(127, 127, 127, 0.14);
     border: none;
     border-radius: 6px;
-    color: rgba(127, 127, 127, 0.9);
+    color: rgba(127, 127, 127, 0.95);
     cursor: pointer;
     transition: background 0.18s ease, color 0.18s ease;
     font-size: 9px;
     flex: 0 0 auto;
+}
+
+.nytw-stepper-btn:hover {
+    background: rgba(127, 127, 127, 0.3);
 }
 
 .nytw-stepper-btn:hover {
@@ -1889,10 +1893,11 @@
 
 #nytw_typography_card .nytw-style-grid--3 .nytw-stepper-btn,
 #nytw_typography_card .nytw-style-grid--4 .nytw-stepper-btn {
-    flex-basis: 16px;
-    width: 16px;
-    min-width: 16px;
-    font-size: 9px;
+    flex-basis: 15px;
+    width: 15px;
+    min-width: 15px;
+    height: 24px;
+    font-size: 8px;
     padding: 0;
 }
 
@@ -3464,7 +3469,7 @@
 
 /* 四列（字号/字距/行高）里步进器更紧凑，避免数字被挤没 */
 .nytw-style-grid--4 .nytw-stepper {
-    gap: 0;
+    gap: 3px;
 }
 
 .nytw-style-grid--4 .nytw-stepper-btn {
