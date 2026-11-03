@@ -69,6 +69,7 @@ export const DEFAULT_SETTINGS = {
     italicTextColor: '',
     overallParagraphSpacing: null,
     overallTextIndent: null,
+    readingContentWidth: null,
     readingPadLeft: null,
     readingPadRight: null,
     readingJustify: false,
@@ -233,6 +234,14 @@ export function clampOptionalTextIndent(value) {
     return Math.round(clamped * 100) / 100; // 0.01em steps
 }
 
+/** 正文宽度（ch），null = 跟随美化 */
+export function clampOptionalContentWidth(value) {
+    const num = parseOptionalNumber(value);
+    if (num === null) return null;
+    const clamped = Math.min(200, Math.max(0, num));
+    return Math.round(clamped);
+}
+
 /** 正文左右内边距（em），允许左右分别设置 */
 export function clampOptionalReadingPad(value) {
     const num = parseOptionalNumber(value);
@@ -363,6 +372,7 @@ function applyDefaultSettings() {
     settings.dialogueFontStyle = normalizeOptionalFontStyle(settings.dialogueFontStyle);
     settings.overallTextColor = normalizeOptionalCssColor(settings.overallTextColor);
     settings.italicTextColor = normalizeOptionalCssColor(settings.italicTextColor);
+    settings.readingContentWidth = clampOptionalContentWidth(settings.readingContentWidth);
     settings.readingPadLeft = clampOptionalReadingPad(settings.readingPadLeft);
     settings.readingPadRight = clampOptionalReadingPad(settings.readingPadRight);
     settings.tagFilterCollapsed = settings.tagFilterCollapsed === true;

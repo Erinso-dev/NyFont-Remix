@@ -9,6 +9,7 @@ import {
     clampOptionalLetterSpacing,
     clampOptionalLineHeight,
     clampOptionalParagraphSpacing,
+    clampOptionalContentWidth,
     clampOptionalReadingPad,
     clampOptionalTextIndent,
     clampStreamAnimSpeed,
@@ -63,6 +64,7 @@ const READING_STYLE_KEYS = [
     'customLetterSpacing',
     'localeFontSize',
     'localeLetterSpacing',
+    'readingContentWidth',
     'readingPadLeft',
     'readingPadRight',
     'readingJustify',
@@ -109,6 +111,7 @@ function normalizeReadingStyleValue(key, value) {
     if (key === 'readingStyleEnabled') return value === true;
     if (key === 'readingJustify' || key === 'splitLinesToParagraphs') return value === true;
     if (key === 'readingPadLeft' || key === 'readingPadRight') return clampOptionalReadingPad(value);
+    if (key === 'readingContentWidth') return clampOptionalContentWidth(value);
     if (key.endsWith('FontSize')) return clampOptionalFontSize(value);
     if (key.endsWith('LetterSpacing')) return clampOptionalLetterSpacing(value);
     if (key.endsWith('LineHeight') || key === 'lineHeight') return clampOptionalLineHeight(value);
@@ -421,9 +424,6 @@ export function initDisplaySettingsTab() {
                     <div class="nytw-style-grid nytw-style-grid--3"><div class="nytw-typo-type"><i class="fa-solid fa-layer-group"></i> 整体</div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_overall_paragraph_spacing" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0" max="6" step="0.05" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_overall_text_indent" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0" max="8" step="0.25" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div></div>
                     <div class="nytw-style-grid nytw-style-grid--3"><div class="nytw-typo-type"><i class="fa-solid fa-align-left"></i> 正文</div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_body_paragraph_spacing" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0" max="6" step="0.05" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_body_text_indent" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0" max="8" step="0.25" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div></div>
                     <div class="nytw-style-grid nytw-style-grid--3"><div class="nytw-typo-type"><i class="fa-solid fa-quote-left"></i> 对话</div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_dialogue_paragraph_spacing" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0" max="6" step="0.05" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_dialogue_text_indent" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0" max="8" step="0.25" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div></div>
-                    <div class="nytw-style-grid nytw-style-grid--3 nytw-style-grid--head"><div>边距</div><div>左(em)</div><div>右(em)</div></div>
-                    <div class="nytw-style-grid nytw-style-grid--3"><div class="nytw-typo-type"><i class="fa-solid fa-arrows-left-right"></i> 正文</div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_reading_pad_left" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="-24" max="24" step="0.1" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_reading_pad_right" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="-24" max="24" step="0.1" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div></div>
-                    <label class="nytw-preset-font-option" for="nytw_reading_justify"><input id="nytw_reading_justify" type="checkbox" /><span>两端对齐</span></label>
                     <label class="nytw-preset-font-option" for="nytw_split_lines_to_paragraphs"><input id="nytw_split_lines_to_paragraphs" type="checkbox" /><span>每行独立成段（逐行首行缩进）</span></label>
                     <div class="nytw-reader-preset-actions">
                         <button id="nytw_para_diag" class="menu_button nytw-reader-small-btn nytw-preset-btn" type="button">
@@ -442,7 +442,18 @@ export function initDisplaySettingsTab() {
                         </div>
                         <pre id="nytw_para_diag_out" class="nytw-diag-out"></pre>
                     </div>
-                    <p class="nytw-preset-hint">左右边距：正值让正文往里收（变窄），负值让正文往外扩（变宽），用来适配不同美化的正文宽度；有些美化在两端对齐下右侧参差，也可以用左右边距分别补偿。每行独立成段会把单个换行也当作段落处理，让首行缩进逐行生效（若美化已经把每行渲染成独立段落，这个开关不会有变化）。</p>
+                    <p class="nytw-preset-hint">每行独立成段：把单个换行也当成一个段落，这样「缩进」才能逐行生效（美化如果已经把每行渲染成独立段落，这个开关不会有变化）。</p>
+                `)}
+
+                ${renderReadingSubcard('fa-solid fa-arrows-left-right', '宽度 / 对齐', `
+                    <div class="nytw-style-grid nytw-style-grid--2">
+                        <div class="nytw-typo-type"><i class="fa-solid fa-text-width"></i> 正文宽度</div>
+                        <div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_content_width" type="number" class="text_pole nytw-typo-input" placeholder="自动" min="0" max="200" step="1" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div>
+                    </div>
+                    <div class="nytw-style-grid nytw-style-grid--3 nytw-style-grid--head"><div>误差修正</div><div>左(em)</div><div>右(em)</div></div>
+                    <div class="nytw-style-grid nytw-style-grid--3"><div class="nytw-typo-type"><i class="fa-solid fa-arrows-left-right"></i> 正文</div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_reading_pad_left" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="-24" max="24" step="0.1" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_reading_pad_right" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="-24" max="24" step="0.1" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div></div>
+                    <label class="nytw-preset-font-option" for="nytw_reading_justify"><input id="nytw_reading_justify" type="checkbox" /><span>两端对齐</span></label>
+                    <p class="nytw-preset-hint">先调「正文宽度」把整体宽度定下来（单位 ch，留空＝跟随美化）；如果正文在气泡里偏左/偏右，再用下面左右微调分别补偿。微调正值＝往里收，负值＝往外扩，左右互不影响。</p>
                 `)}
 
                 ${renderReadingSubcard('fa-solid fa-bold', '字体样式', `
@@ -655,6 +666,7 @@ export function initDisplaySettingsTab() {
     const bodyTextIndentEl = document.getElementById('nytw_body_text_indent');
     const dialogueParagraphSpacingEl = document.getElementById('nytw_dialogue_paragraph_spacing');
     const dialogueTextIndentEl = document.getElementById('nytw_dialogue_text_indent');
+    const contentWidthEl = document.getElementById('nytw_content_width');
     const readingPadLeftEl = document.getElementById('nytw_reading_pad_left');
     const readingPadRightEl = document.getElementById('nytw_reading_pad_right');
     const readingJustifyEl = document.getElementById('nytw_reading_justify');
@@ -983,6 +995,7 @@ export function initDisplaySettingsTab() {
         { el: bodyTextIndentEl, key: 'bodyTextIndent', clamp: clampOptionalTextIndent },
         { el: dialogueParagraphSpacingEl, key: 'dialogueParagraphSpacing', clamp: clampOptionalParagraphSpacing },
         { el: dialogueTextIndentEl, key: 'dialogueTextIndent', clamp: clampOptionalTextIndent },
+        { el: contentWidthEl, key: 'readingContentWidth', clamp: clampOptionalContentWidth },
         { el: readingPadLeftEl, key: 'readingPadLeft', clamp: clampOptionalReadingPad },
         { el: readingPadRightEl, key: 'readingPadRight', clamp: clampOptionalReadingPad },
         { el: customFontSizeEl, key: 'customFontSize', clamp: clampOptionalFontSize },

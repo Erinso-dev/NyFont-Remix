@@ -1606,7 +1606,7 @@
     min-width: 0 !important;
     width: auto !important;
     height: 28px !important;
-    padding: 0 10px !important;
+    padding: 0 14px !important;
 }
 
 .nytw-stepper .nytw-stepper-btn {
@@ -3633,4 +3633,24 @@
     max-height: 0;
     opacity: 0;
     pointer-events: none;
+}
+
+/* 两列布局（宽度类单值设置） */
+.nytw-style-grid--2 {
+    grid-template-columns: minmax(86px, auto) minmax(0, 1fr);
+}
+
+/* 四列（字号/字距/行高）整体右缩，避免最后的 + 顶到边框 */
+.nytw-style-grid--4 {
+    padding-right: 6px;
+    column-gap: 6px;
+}
+
+.nytw-style-grid--4 .nytw-stepper {
+    min-width: 0;
+}
+
+.nytw-style-grid--4 .nytw-stepper .nytw-typo-input {
+    min-width: 30px !important;
+    padding: 0 5px !important;
 }

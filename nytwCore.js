@@ -12,6 +12,7 @@ import {
     clampOptionalLetterSpacing,
     clampOptionalLineHeight,
     clampOptionalParagraphSpacing,
+    clampOptionalContentWidth,
     clampOptionalReadingPad,
     clampOptionalTextIndent,
     clampStreamAnimSpeed,
@@ -375,6 +376,7 @@ function getNormalizedTypographyValues() {
         bodyTextColor: normalizeOptionalCssColor(settings.bodyTextColor),
         bodyParagraphSpacing: clampOptionalParagraphSpacing(settings.bodyParagraphSpacing),
         bodyTextIndent: clampOptionalTextIndent(settings.bodyTextIndent),
+        readingContentWidth: clampOptionalContentWidth(settings.readingContentWidth),
         readingPadLeft: clampOptionalReadingPad(settings.readingPadLeft),
         readingPadRight: clampOptionalReadingPad(settings.readingPadRight),
         bodyFontWeight: normalizeOptionalFontWeight(settings.bodyFontWeight),
@@ -459,6 +461,9 @@ function buildReadingStyleCss() {
         padDeclarations.push('margin-right:min(0em,var(--nytw-pad-right,0)) !important;');
     }
     pushReadingRule(css, ['#chat .mes_text'], padDeclarations);
+    if (hasReadingStyleValue(values.readingContentWidth)) {
+        pushReadingRule(css, ['#chat .mes_text'], ['max-width:var(--nytw-content-width) !important;']);
+    }
     if (padDeclarations.length) {
         pushReadingRule(css, ['#chat .mes_text:has(textarea)'], [
             'padding-left:0 !important;',
@@ -599,6 +604,7 @@ function clearTypographyVariables(chatEl) {
     chatEl.style.removeProperty('--nytw-italic-text-color');
     chatEl.style.removeProperty('--nytw-body-paragraph-spacing');
     chatEl.style.removeProperty('--nytw-body-text-indent');
+    chatEl.style.removeProperty('--nytw-content-width');
     chatEl.style.removeProperty('--nytw-pad-left');
     chatEl.style.removeProperty('--nytw-pad-right');
     chatEl.style.removeProperty('--nytw-body-font-weight');
@@ -654,6 +660,7 @@ function applyTypographyVariables() {
         bodyTextColor,
         bodyParagraphSpacing,
         bodyTextIndent,
+        readingContentWidth,
         readingPadLeft,
         readingPadRight,
         bodyFontWeight,
@@ -687,6 +694,7 @@ function applyTypographyVariables() {
     setOrRemoveCssVar(chatEl, '--nytw-body-text-color', bodyTextColor);
     setOrRemoveCssVar(chatEl, '--nytw-body-paragraph-spacing', bodyParagraphSpacing === null ? '' : `${bodyParagraphSpacing}em`);
     setOrRemoveCssVar(chatEl, '--nytw-body-text-indent', bodyTextIndent === null ? '' : `${bodyTextIndent}em`);
+    setOrRemoveCssVar(chatEl, '--nytw-content-width', readingContentWidth === null ? '' : `${readingContentWidth}ch`);
     setOrRemoveCssVar(chatEl, '--nytw-pad-left', readingPadLeft === null ? '' : `${readingPadLeft}em`);
     setOrRemoveCssVar(chatEl, '--nytw-pad-right', readingPadRight === null ? '' : `${readingPadRight}em`);
     setOrRemoveCssVar(chatEl, '--nytw-body-font-weight', bodyFontWeight);
