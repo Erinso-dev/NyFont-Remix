@@ -21,6 +21,7 @@ import {
     formatBytes,
     getFontBlob,
     getFontFamilyDisplayLabel,
+    ensurePreviewFont,
     getImportedFontKind,
     inferFamiliesFromGoogleFontsCssUrl,
     inferFontFormatFromFileName,
@@ -431,9 +432,10 @@ function buildFontRow(font) {
     const name = document.createElement('div');
     name.className = 'nytw-font-name';
     name.textContent = family ? (getFontFamilyDisplayLabel(family) || family) : '未命名';
-    try {
-        name.style.fontFamily = toCssFontFamilyValue(family);
-    } catch { /* ignore */ }
+    // 字体在滚动到可见时才加载，避免一次性拉取全部字体文件
+    if (family) {
+        row.dataset.previewFamily = family;
+    }
 
     const sub = document.createElement('div');
     sub.className = 'nytw-font-sub';
@@ -538,6 +540,46 @@ async function deleteFontEntries(fonts) {
     }
 }
 
+let previewObserver = null;
+
+/**
+ * 滚动到可见时才把字体套到名字上，并懒加载对应字体文件。
+ */
+function observeFontPreviews(container) {
+    const rows = Array.from(container.querySelectorAll('.nytw-font-row[data-preview-family]'));
+    if (!rows.length) return;
+
+    const applyPreview = async (row) => {
+        const family = row.dataset.previewFamily;
+        if (!family || row.dataset.previewApplied === '1') return;
+        row.dataset.previewApplied = '1';
+        const font = (settings.importedFonts || []).find((f) => String(f?.family || '').trim() === family);
+        try {
+            await ensurePreviewFont(font || { family });
+            const nameEl = row.querySelector('.nytw-font-name');
+            if (nameEl instanceof HTMLElement) {
+                nameEl.style.fontFamily = toCssFontFamilyValue(family);
+            }
+        } catch { /* ignore */ }
+    };
+
+    if (typeof IntersectionObserver !== 'function') {
+        rows.forEach((row) => applyPreview(row));
+        return;
+    }
+
+    if (previewObserver) previewObserver.disconnect();
+    previewObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            previewObserver.unobserve(entry.target);
+            applyPreview(entry.target);
+        }
+    }, { root: null, rootMargin: '200px', threshold: 0 });
+
+    rows.forEach((row) => previewObserver.observe(row));
+}
+
 export function renderImportedFontsList() {
     const container = document.getElementById('nytw_imported_fonts');
     if (!container) return;
@@ -600,6 +642,8 @@ export function renderImportedFontsList() {
         frag.appendChild(buildFontRow(font));
     }
     container.appendChild(frag);
+
+    observeFontPreviews(container);
 
     updateBatchBar();
 }

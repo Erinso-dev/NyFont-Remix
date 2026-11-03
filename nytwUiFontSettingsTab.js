@@ -85,6 +85,126 @@ function renderLocaleFontsList(rootEl, onUpdate) {
     });
 }
 
+
+function renderCustomFontRules(containerEl) {
+    if (!containerEl) return;
+    containerEl.innerHTML = '';
+
+    if (!Array.isArray(settings.customFontRules)) settings.customFontRules = [];
+    const rules = settings.customFontRules;
+
+    if (!rules.length) {
+        const empty = document.createElement('div');
+        empty.className = 'nytw-help nytw-help--compact';
+        empty.textContent = '还没有包裹规则，点下面的按钮添加一条。';
+        containerEl.appendChild(empty);
+        return;
+    }
+
+    const save = debounce(() => {
+        saveSettingsDebounced();
+        scheduleScan();
+    }, 200);
+
+    rules.forEach((rule, index) => {
+        const block = document.createElement('div');
+        block.className = 'nytw-custom-rule';
+
+        // 第一行：独立字体 + 删除
+        const fontRow = document.createElement('div');
+        fontRow.className = 'flex-container alignItemsCenter nytw-row nytw-row--nested';
+
+        const fontLabel = document.createElement('label');
+        fontLabel.className = 'nytw-label';
+        fontLabel.textContent = '独立字体';
+
+        const fontWrapper = document.createElement('div');
+        fontWrapper.className = 'nytw-input-wrapper';
+
+        const fontInput = document.createElement('input');
+        fontInput.type = 'text';
+        fontInput.className = 'text_pole nytw-input nytw-font-input';
+        fontInput.placeholder = '（留空表示默认）';
+        fontInput.autocomplete = 'off';
+        fontInput.value = rule.font || '';
+
+        const fontPopup = document.createElement('div');
+        fontPopup.className = 'nytw-font-picker-popup';
+
+        fontWrapper.appendChild(fontInput);
+        fontWrapper.appendChild(fontPopup);
+
+        setupFontPicker(fontInput, fontPopup, (val) => {
+            rule.font = val;
+            save();
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'menu_button nytw-icon-button';
+        delBtn.title = '删除这条规则';
+        delBtn.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
+        delBtn.addEventListener('click', () => {
+            const currentIndex = settings.customFontRules.indexOf(rule);
+            if (currentIndex < 0) return;
+            settings.customFontRules.splice(currentIndex, 1);
+            saveSettingsDebounced();
+            renderCustomFontRules(containerEl);
+            scheduleScan();
+        });
+
+        fontRow.appendChild(fontLabel);
+        fontRow.appendChild(fontWrapper);
+        fontRow.appendChild(delBtn);
+
+        // 第二行：包裹符号
+        const symbolRow = document.createElement('div');
+        symbolRow.className = 'flex-container alignItemsCenter nytw-row nytw-row--nested nytw-row--symbols';
+
+        const symbolLabel = document.createElement('label');
+        symbolLabel.className = 'nytw-label';
+        symbolLabel.textContent = '包裹符号';
+
+        const multi = document.createElement('div');
+        multi.className = 'nytw-multi-input-wrapper';
+
+        const openInput = document.createElement('input');
+        openInput.type = 'text';
+        openInput.className = 'text_pole nytw-token';
+        openInput.placeholder = '（起始）';
+        openInput.value = rule.open || '';
+        openInput.addEventListener('input', () => {
+            rule.open = openInput.value;
+            save();
+        });
+
+        const arrow = document.createElement('span');
+        arrow.className = 'nytw-arrow';
+        arrow.textContent = '→';
+
+        const closeInput = document.createElement('input');
+        closeInput.type = 'text';
+        closeInput.className = 'text_pole nytw-token';
+        closeInput.placeholder = '（结束）';
+        closeInput.value = rule.close || '';
+        closeInput.addEventListener('input', () => {
+            rule.close = closeInput.value;
+            save();
+        });
+
+        multi.appendChild(openInput);
+        multi.appendChild(arrow);
+        multi.appendChild(closeInput);
+
+        symbolRow.appendChild(symbolLabel);
+        symbolRow.appendChild(multi);
+
+        block.appendChild(fontRow);
+        block.appendChild(symbolRow);
+        containerEl.appendChild(block);
+    });
+}
+
 let refreshFontSettingsControls = () => {};
 
 // Refresh the existing controls without rebinding picker or toggle listeners.
@@ -217,6 +337,29 @@ export function initFontSettingsTab() {
         setupFontPicker(customFontEl, customFontPopup, (val) => {
             settings.customFont = val;
             debouncedSaveAndApply();
+        });
+    }
+
+    // 包裹规则列表
+    const customRulesContainer = document.getElementById('nytw_custom_rules');
+    if (customRulesContainer) {
+        renderCustomFontRules(customRulesContainer);
+    }
+    const addCustomRuleBtn = document.getElementById('nytw_add_custom_rule');
+    if (addCustomRuleBtn) {
+        addCustomRuleBtn.addEventListener('click', () => {
+            if (!Array.isArray(settings.customFontRules)) settings.customFontRules = [];
+            settings.customFontRules.push({ font: '', open: '', close: '' });
+            if (!settings.customFontWrapEnabled) {
+                const wrapToggle = document.getElementById('nytw_custom_font_wrap_enabled');
+                if (wrapToggle instanceof HTMLInputElement && !wrapToggle.checked) {
+                    wrapToggle.checked = true;
+                    wrapToggle.dispatchEvent(new Event('change'));
+                }
+            }
+            saveSettingsDebounced();
+            if (customRulesContainer) renderCustomFontRules(customRulesContainer);
+            scheduleScan();
         });
     }
 

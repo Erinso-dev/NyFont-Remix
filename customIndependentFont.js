@@ -69,20 +69,20 @@ function countOccurrences(text, token, max = 50) {
     return count;
 }
 
-function getContainerSignature(containerEl, openToken, closeToken) {
+function getContainerSignature(containerEl, rules = []) {
     const text = containerEl?.textContent || '';
-    const open = String(openToken || '');
-    const close = String(closeToken || '');
     const markerCount = containerEl?.querySelectorAll
         ? containerEl.querySelectorAll(`[${CUSTOM_INDEPENDENT_FONT_MARK_ATTR}]`).length
         : 0;
 
     return JSON.stringify({
-        open,
-        close,
+        rules: rules.map((rule) => ({
+            open: rule.open,
+            close: rule.close,
+            openCount: countOccurrences(text, rule.open),
+            closeCount: countOccurrences(text, rule.close),
+        })),
         len: text.length,
-        openCount: countOccurrences(text, open),
-        closeCount: countOccurrences(text, close),
         markerCount,
     });
 }
@@ -140,7 +140,7 @@ function findDelimitedRanges(text, openToken, closeToken) {
     return ranges;
 }
 
-function wrapTextNodeRange(textNode, startOffset, endOffset) {
+function wrapTextNodeRange(textNode, startOffset, endOffset, fontCss = '') {
     if (!textNode?.parentNode) return;
     const value = textNode.nodeValue || '';
     if (!value) return;
@@ -161,6 +161,11 @@ function wrapTextNodeRange(textNode, startOffset, endOffset) {
     const wrapper = document.createElement('span');
     addScopedClass(wrapper, CUSTOM_INDEPENDENT_FONT_CLASS);
     wrapper.setAttribute(CUSTOM_INDEPENDENT_FONT_MARK_ATTR, WRAP_KIND_VALUE);
+    // 每条规则可以用不同字体，直接写在元素上
+    if (fontCss) {
+        wrapper.style.fontFamily = fontCss;
+        wrapper.dataset.nytwCustomFont = fontCss;
+    }
     middle.parentNode.replaceChild(wrapper, middle);
     wrapper.appendChild(middle);
 }
@@ -182,26 +187,40 @@ function applySegmentsToTextNode(textNode, segments) {
 
     // Process from the end so splitText offsets remain valid.
     const sorted = segments
-        .map(([s, e]) => [Number(s) || 0, Number(e) || 0])
-        .filter(([s, e]) => e > s)
-        .sort((a, b) => (b[0] - a[0]) || (b[1] - a[1]));
+        .map((seg) => ({
+            start: Number(seg.start ?? seg[0]) || 0,
+            end: Number(seg.end ?? seg[1]) || 0,
+            css: seg.css || '',
+        }))
+        .filter((seg) => seg.end > seg.start)
+        .sort((a, b) => (b.start - a.start) || (b.end - a.end));
 
-    for (const [start, end] of sorted) {
-        if (start <= 0 && end >= fullLen) {
+    for (const seg of sorted) {
+        if (seg.start <= 0 && seg.end >= fullLen) {
             const marked = markTypewriterCharSpan(textNode);
             if (marked) continue;
         }
-
-        wrapTextNodeRange(textNode, start, end);
+        wrapTextNodeRange(textNode, seg.start, seg.end, seg.css);
     }
 }
 
-export function applyCustomIndependentFont(containerEl, { enabled, openToken, closeToken } = {}) {
+export function applyCustomIndependentFont(containerEl, { enabled, rules, openToken, closeToken } = {}) {
     if (!containerEl || !(containerEl instanceof HTMLElement)) return;
 
-    const open = String(openToken || '').trim();
-    const close = String(closeToken || '').trim();
-    const active = Boolean(enabled) && open && close;
+    // 兼容旧调用：单组 open/close
+    let ruleList = Array.isArray(rules) ? rules : [];
+    if (!ruleList.length && (openToken || closeToken)) {
+        ruleList = [{ open: openToken, close: closeToken, fontCss: '' }];
+    }
+    ruleList = ruleList
+        .map((rule) => ({
+            open: String(rule?.open || '').trim(),
+            close: String(rule?.close || '').trim(),
+            fontCss: String(rule?.fontCss || '').trim(),
+        }))
+        .filter((rule) => rule.open && rule.close);
+
+    const active = Boolean(enabled) && ruleList.length > 0;
 
     if (!active) {
         clearCustomIndependentFont(containerEl);
@@ -210,14 +229,14 @@ export function applyCustomIndependentFont(containerEl, { enabled, openToken, cl
     }
 
     const prevSig = processedSigByContainer.get(containerEl);
-    const nextSig = getContainerSignature(containerEl, open, close);
+    const nextSig = getContainerSignature(containerEl, ruleList);
     if (prevSig === nextSig) return;
 
     clearCustomIndependentFont(containerEl);
 
     const textNodes = collectEligibleTextNodes(containerEl);
     if (!textNodes.length) {
-        processedSigByContainer.set(containerEl, getContainerSignature(containerEl, open, close));
+        processedSigByContainer.set(containerEl, getContainerSignature(containerEl, ruleList));
         return;
     }
 
@@ -236,30 +255,47 @@ export function applyCustomIndependentFont(containerEl, { enabled, openToken, cl
         if (offset >= 50000) break;
     }
 
-    const ranges = findDelimitedRanges(fullText, open, close);
+    // 收集所有规则的匹配区间，再按位置去重（先到先得，不嵌套覆盖）
+    const allRanges = [];
+    for (const rule of ruleList) {
+        for (const [s, e] of findDelimitedRanges(fullText, rule.open, rule.close)) {
+            allRanges.push({ start: s, end: e, css: rule.fontCss });
+        }
+    }
+    allRanges.sort((a, b) => (a.start - b.start) || (a.end - b.end));
+
+    const ranges = [];
+    let lastEnd = -1;
+    for (const range of allRanges) {
+        if (range.end <= range.start) continue;
+        if (range.start < lastEnd) continue;
+        ranges.push(range);
+        lastEnd = range.end;
+    }
+
     if (!ranges.length) {
-        processedSigByContainer.set(containerEl, getContainerSignature(containerEl, open, close));
+        processedSigByContainer.set(containerEl, getContainerSignature(containerEl, ruleList));
         return;
     }
 
-    /** @type {Map<Text, Array<[number, number]>>} */
+    /** @type {Map<Text, Array<{start:number,end:number,css:string}>>} */
     const segmentsByNode = new Map();
     let nodeIdx = 0;
 
-    for (const [rangeStart, rangeEnd] of ranges) {
-        while (nodeIdx < infos.length && infos[nodeIdx].end <= rangeStart) nodeIdx += 1;
+    for (const range of ranges) {
+        while (nodeIdx < infos.length && infos[nodeIdx].end <= range.start) nodeIdx += 1;
 
         let j = nodeIdx;
-        while (j < infos.length && infos[j].start < rangeEnd) {
+        while (j < infos.length && infos[j].start < range.end) {
             const info = infos[j];
-            const segStart = Math.max(info.start, rangeStart) - info.start;
-            const segEnd = Math.min(info.end, rangeEnd) - info.start;
+            const segStart = Math.max(info.start, range.start) - info.start;
+            const segEnd = Math.min(info.end, range.end) - info.start;
             if (segEnd > segStart) {
                 const existing = segmentsByNode.get(info.node) || [];
-                existing.push([segStart, segEnd]);
+                existing.push({ start: segStart, end: segEnd, css: range.css });
                 segmentsByNode.set(info.node, existing);
             }
-            if (info.end >= rangeEnd) break;
+            if (info.end >= range.end) break;
             j += 1;
         }
 
@@ -267,5 +303,5 @@ export function applyCustomIndependentFont(containerEl, { enabled, openToken, cl
     }
 
     segmentsByNode.forEach((segments, node) => applySegmentsToTextNode(node, segments));
-    processedSigByContainer.set(containerEl, getContainerSignature(containerEl, open, close));
+    processedSigByContainer.set(containerEl, getContainerSignature(containerEl, ruleList));
 }

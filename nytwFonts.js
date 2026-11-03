@@ -1287,6 +1287,45 @@ function setupLocalePicker(inputEl, popupEl, onSave) {
 }
 
 
+
+/* ---------------- 字体预览（懒加载） ---------------- */
+
+const PREVIEW_STYLE_ID = 'nytw-font-preview';
+const previewFamilies = new Set();
+
+function ensurePreviewStyleEl() {
+    let el = document.getElementById(PREVIEW_STYLE_ID);
+    if (!el) {
+        el = document.createElement('style');
+        el.id = PREVIEW_STYLE_ID;
+        document.head.appendChild(el);
+    }
+    return el;
+}
+
+/**
+ * 给字体列表的行做预览：只有真正滚到可见时才加载字体，避免一次性拉一堆大文件。
+ */
+export async function ensurePreviewFont(font) {
+    const family = String(font?.family || '').trim();
+    if (!family || previewFamilies.has(family)) return family;
+    previewFamilies.add(family);
+
+    try {
+        if (getImportedFontKind(font) === 'css') {
+            if (font.cssUrl) syncExternalFontStylesheets([font.cssUrl]);
+            return family;
+        }
+        const css = await buildFontFaceCssForFamilies([family]);
+        if (css) {
+            ensurePreviewStyleEl().textContent += css;
+        }
+    } catch (error) {
+        console.warn('[NyTW] preview font failed', family, error);
+    }
+    return family;
+}
+
 export {
     cssQuote,
     parseFontFamilyList,

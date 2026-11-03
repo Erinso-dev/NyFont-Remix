@@ -137,51 +137,14 @@
                         </div>
 
                         <div id="nytw_custom_font_wrap_panel" class="nytw-collapsible" aria-hidden="true">
-                            <!-- 自定义字体输入 -->
-                            <div class="flex-container alignItemsCenter nytw-row nytw-row--nested">
-                                <label for="nytw_custom_font" class="nytw-label">独立字体</label>
-                                <div class="nytw-input-wrapper">
-                                    <input id="nytw_custom_font"
-                                        type="text"
-                                        class="text_pole nytw-input nytw-font-input"
-                                        placeholder="（留空表示默认）"
-                                        autocomplete="off" />
-                                    <div class="nytw-font-picker-popup" id="nytw_custom_font_popup"></div>
-                                </div>
-                     <button id="nytw_custom_font_clear"
-                                        class="menu_button nytw-icon-button"
-                                        type="button"
-                                        title="清除"
-                                        aria-label="清除">
-                                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                            <div id="nytw_custom_rules" class="nytw-custom-rules"></div>
+                            <div class="nytw-row nytw-row--nested nytw-add-locale-row">
+                                <button id="nytw_add_custom_rule" class="nytw-dashed-btn" type="button">
+                                    <i class="fa-solid fa-plus"></i> 添加包裹规则
                                 </button>
                             </div>
-
-                            <!-- 包裹符号 -->
-                            <div class="flex-container alignItemsCenter nytw-row nytw-row--nested nytw-row--symbols">
-                                <label class="nytw-label">包裹符号</label>
-                                <div class="nytw-multi-input-wrapper">
-                                    <input id="nytw_custom_font_open"
-                                           type="text"
-                                           class="text_pole nytw-token"
-                                           placeholder="（起始）" />
-                                    <span class="nytw-arrow" aria-hidden="true">→</span>
-                                    <input id="nytw_custom_font_close"
-                                           type="text"
-                                           class="text_pole nytw-token"
-                                           placeholder="（结束）" />
-                                    <button id="nytw_custom_font_symbols_clear"
-                                            class="menu_button nytw-icon-button"
-                                            type="button"
-                                            title="清除"
-                                            aria-label="清除">
-                                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                                    </button>
-                                </div>
-                            </div>
-
                             <div class="nytw-help nytw-help--nested">
-                                提示：例如设置开始为 <code>『</code>，结束为 <code>』</code>，则 <code>『这段文字』</code> 会使用该字体。
+                                每条规则单独指定字体和一对包裹符号，例如 <code>『』</code> 用宋体、<code>〔〕</code> 用黑体。文字要紧挨着符号并成对出现才会生效。
                             </div>
                         </div>
                         

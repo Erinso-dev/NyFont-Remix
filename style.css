@@ -256,7 +256,10 @@
     position: absolute;
     top: 100%;
     left: 0;
-    right: 0;
+    right: auto;
+    width: max(100%, 250px);
+    max-width: 88vw;
+    box-sizing: border-box;
     margin-top: 5px;
     z-index: 100;
     
@@ -3653,4 +3656,24 @@
 .nytw-style-grid--4 .nytw-stepper .nytw-typo-input {
     min-width: 30px !important;
     padding: 0 5px !important;
+}
+
+/* 多条包裹规则 */
+.nytw-custom-rule {
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(127, 127, 127, 0.2);
+}
+
+.nytw-custom-rule:last-child {
+    border-bottom: none;
+}
+
+.nytw-custom-rule .nytw-row--nested {
+    padding-left: 0;
+}
+
+/* 字体名预览：略大一点，字形差异更明显 */
+.nytw-font-name {
+    font-size: 15px;
+    line-height: 1.35;
 }

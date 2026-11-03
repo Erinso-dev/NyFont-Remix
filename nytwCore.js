@@ -55,6 +55,9 @@ const CHAR_CLASS = 'ny-tw-char custom-ny-tw-char';
 const BUNDLE_SELECTOR = "[data-ny-bundle='1']";
 const BUNDLE_PROCESSED_ATTR = 'data-ny-bundle-processed';
 const STREAMING_MESSAGE_CLASS = 'nytw-streaming';
+
+// 「包裹字符字体」当前生效的规则（由 applyFontSettings 解析后写入）
+let activeCustomRules = [];
 const STREAM_RENDER_ATTR = 'data-nytw-stream-render';
 const STREAM_BUFFER_CLASS = 'nytw-stream-buffer';
 const STREAM_ANIM_ATTR = 'data-nytw-stream-anim';
@@ -847,6 +850,20 @@ async function applyFontSettings() {
     const resolvedBody = await resolveValidatedFontCss(settings.bodyFont, '正文字体');
     const resolvedDialogue = await resolveValidatedFontCss(settings.dialogueFont, '对话字体');
     const resolvedCustom = await resolveValidatedFontCss(settings.customFont, '自定义包裹字体');
+    const resolvedCustomRules = [];
+    for (const rule of (Array.isArray(settings.customFontRules) ? settings.customFontRules : [])) {
+        const open = String(rule?.open || '').trim();
+        const close = String(rule?.close || '').trim();
+        if (!open || !close) continue;
+        const rawFont = String(rule?.font || '').trim();
+        if (!rawFont) {
+            resolvedCustomRules.push({ open, close, fontCss: '', families: [] });
+            continue;
+        }
+        const resolved = await resolveValidatedFontCss(rawFont, '包裹字符字体');
+        resolvedCustomRules.push({ open, close, fontCss: resolved.css, families: resolved.families });
+    }
+    activeCustomRules = resolvedCustomRules.map((r) => ({ open: r.open, close: r.close, fontCss: r.fontCss }));
     const localeFontMap = await buildValidatedLocaleFontMap();
 
     const globalFontCss = resolvedGlobal.css;
@@ -865,6 +882,7 @@ async function applyFontSettings() {
         ...resolvedBody.families,
         ...resolvedDialogue.families,
         ...resolvedCustom.families,
+        ...resolvedCustomRules.flatMap((r) => r.families),
         ...localeFontNames,
     ];
 
@@ -2485,7 +2503,7 @@ function processContainerInner(containerEl, { enableTypewriter = true } = {}) {
 
     const customFontEnabled = settings.fontsEnabled
         && settings.customFontWrapEnabled
-        && String(settings.customFont || '').trim().length > 0;
+        && activeCustomRules.length > 0;
 
     // Bundle mode: a single regex script wraps the whole message and stores config in data-*.
     // We then post-process DOM to wrap quotes/custom ranges so the same CSS rules apply.
@@ -2498,8 +2516,7 @@ function processContainerInner(containerEl, { enableTypewriter = true } = {}) {
     if (!dialogues.length || !enableTypewriter) {
         applyCustomIndependentFont(containerEl, {
             enabled: customFontEnabled,
-            openToken: settings.customFontOpen,
-            closeToken: settings.customFontClose,
+            rules: activeCustomRules,
         });
         applyLocaleFonts(containerEl);
         return;
@@ -2537,8 +2554,7 @@ function processContainerInner(containerEl, { enableTypewriter = true } = {}) {
 
     applyCustomIndependentFont(containerEl, {
         enabled: customFontEnabled,
-        openToken: settings.customFontOpen,
-        closeToken: settings.customFontClose,
+        rules: activeCustomRules,
     });
 
     applyLocaleFonts(containerEl);
@@ -2609,13 +2625,7 @@ function scanAndProcess() {
         document.querySelectorAll(`#chat .mes_text:not(.${STREAM_BUFFER_CLASS})`).forEach((el) => containers.add(el));
     }
 
-    if (
-        settings.fontsEnabled
-        && settings.customFontWrapEnabled
-        && String(settings.customFont || '').trim()
-        && String(settings.customFontOpen || '').trim()
-        && String(settings.customFontClose || '').trim()
-    ) {
+    if (settings.fontsEnabled && settings.customFontWrapEnabled && activeCustomRules.length > 0) {
         document.querySelectorAll(`#chat .mes_text:not(.${STREAM_BUFFER_CLASS})`).forEach((el) => containers.add(el));
     }
 

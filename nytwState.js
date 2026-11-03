@@ -39,6 +39,7 @@ export const DEFAULT_SETTINGS = {
     customFont: '',
     customFontOpen: '',
     customFontClose: '',
+    customFontRules: [],
     customFontWrapEnabled: false,
     localeFontEnabled: false,
     localeFonts: [],
@@ -398,6 +399,28 @@ function applyDefaultSettings() {
         const hasOpenToken = Boolean(String(settings.customFontOpen || '').trim());
         const hasCloseToken = Boolean(String(settings.customFontClose || '').trim());
         settings.customFontWrapEnabled = hasCustomFont && hasOpenToken && hasCloseToken;
+    }
+
+    // 包裹规则：数组元素 { font, open, close }
+    if (!Array.isArray(settings.customFontRules)) settings.customFontRules = [];
+    settings.customFontRules = settings.customFontRules
+        .map((rule) => ({
+            font: String(rule?.font || '').trim(),
+            open: String(rule?.open || '').trim(),
+            close: String(rule?.close || '').trim(),
+        }))
+        .filter((rule) => rule.font || rule.open || rule.close);
+
+    // 旧版单组设置 → 迁移成第一条规则
+    if (!settings.customFontRules.length
+        && String(settings.customFont || '').trim()
+        && String(settings.customFontOpen || '').trim()
+        && String(settings.customFontClose || '').trim()) {
+        settings.customFontRules = [{
+            font: String(settings.customFont).trim(),
+            open: String(settings.customFontOpen).trim(),
+            close: String(settings.customFontClose).trim(),
+        }];
     }
     if (!Array.isArray(settings.importedFonts)) settings.importedFonts = [];
     if (!Array.isArray(settings.localeFonts)) settings.localeFonts = [];
