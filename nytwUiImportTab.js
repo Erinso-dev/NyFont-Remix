@@ -571,11 +571,14 @@ function observeFontPreviews(container) {
     if (previewObserver) previewObserver.disconnect();
     previewObserver = new IntersectionObserver((entries) => {
         for (const entry of entries) {
-            if (!entry.isIntersecting) continue;
-            previewObserver.unobserve(entry.target);
-            applyPreview(entry.target);
+            if (entry.isIntersecting) {
+                applyPreview(entry.target);
+            } else {
+                // 滑出视野后允许下次滑回来时重新套用（防止被重置）
+                if (entry.target instanceof HTMLElement) entry.target.dataset.previewApplied = '';
+            }
         }
-    }, { root: null, rootMargin: '200px', threshold: 0 });
+    }, { root: null, rootMargin: '400px 0px', threshold: 0 });
 
     rows.forEach((row) => previewObserver.observe(row));
 }

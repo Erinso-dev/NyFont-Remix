@@ -3677,3 +3677,24 @@
     font-size: 15px;
     line-height: 1.35;
 }
+
+/* 字体选择弹层：右对齐输入框，避免右侧出框；标签栏不被压扁 */
+.nytw-font-picker-popup {
+    left: auto;
+    right: 0;
+    width: max(100%, 250px);
+    max-width: 88vw;
+}
+
+.nytw-font-picker-popup .nytw-tag-bar--popup {
+    flex: 0 0 auto;
+    min-height: 34px;
+    align-items: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.nytw-font-picker-popup .nytw-tag-chip {
+    flex: 0 0 auto;
+}

@@ -1209,6 +1209,13 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
 }
 
 function setupFontPicker(inputEl, popupEl, onSave) {
+    // 这些输入框只用来选字体，不需要键盘
+    try {
+        inputEl.readOnly = true;
+        inputEl.setAttribute('inputmode', 'none');
+        inputEl.setAttribute('autocomplete', 'off');
+    } catch { /* ignore */ }
+
     const updateStyle = () => {
         if (!inputEl) return;
         try {
@@ -1316,9 +1323,12 @@ export async function ensurePreviewFont(font) {
             if (font.cssUrl) syncExternalFontStylesheets([font.cssUrl]);
             return family;
         }
-        const css = await buildFontFaceCssForFamilies([family]);
+        // 关键：每次都按「当前已预览的全部字体」重建，
+        // 否则 buildFontFaceCssForFamilies 会移除不在本次列表里的 face，
+        // 导致滑回去时预览消失。
+        const css = await buildFontFaceCssForFamilies(Array.from(previewFamilies));
         if (css) {
-            ensurePreviewStyleEl().textContent += css;
+            ensurePreviewStyleEl().textContent = css;
         }
     } catch (error) {
         console.warn('[NyTW] preview font failed', family, error);
