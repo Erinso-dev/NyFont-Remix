@@ -1179,18 +1179,30 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
     };
 
     const positionPopup = () => {
-        // 让弹层宽度贴合「设置面板内容区」，这样左右两边都不会被容器裁切
+        // 宽度固定成“舒服阅读”的 280px（面板更窄时自动缩到面板内），
+        // 位置在面板范围内做 clamp：既不会被裁切，也不会溢出。
         const host = inputEl.closest('.nytw-content-area') || inputEl.closest('#nytw_settings_root');
         const wrapper = popupEl.parentElement;
         if (!host || !wrapper) return;
+
         const hostRect = host.getBoundingClientRect();
         const wrapRect = wrapper.getBoundingClientRect();
+        const inputRect = inputEl.getBoundingClientRect();
         const gutter = 8;
-        const width = Math.max(180, hostRect.width - gutter * 2);
+
+        const available = Math.max(180, hostRect.width - gutter * 2);
+        const width = Math.min(280, available);
+
+        // 弹层相对面板的理想左边：与输入框左对齐
+        let leftInPanel = inputRect.left - hostRect.left;
+        // 收进面板内
+        const maxLeft = Math.max(gutter, hostRect.width - width - gutter);
+        leftInPanel = Math.min(Math.max(gutter, leftInPanel), maxLeft);
+
         popupEl.style.position = 'absolute';
-        popupEl.style.left = (hostRect.left - wrapRect.left + gutter) + 'px';
         popupEl.style.right = 'auto';
         popupEl.style.width = width + 'px';
+        popupEl.style.left = (hostRect.left - wrapRect.left + leftInPanel) + 'px';
     };
 
     const showPopup = () => {
