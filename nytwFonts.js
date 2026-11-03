@@ -1313,6 +1313,12 @@ function ensurePreviewStyleEl() {
 /**
  * 给字体列表的行做预览：只有真正滚到可见时才加载字体，避免一次性拉一堆大文件。
  */
+export function resetPreviewFont(family) {
+    const name = String(family || '').trim();
+    if (!name) return;
+    previewFamilies.delete(name);
+}
+
 export async function ensurePreviewFont(font) {
     const family = String(font?.family || '').trim();
     if (!family || previewFamilies.has(family)) return family;

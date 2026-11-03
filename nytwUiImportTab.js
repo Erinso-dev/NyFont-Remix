@@ -22,6 +22,7 @@ import {
     getFontBlob,
     getFontFamilyDisplayLabel,
     ensurePreviewFont,
+    resetPreviewFont,
     getImportedFontKind,
     inferFamiliesFromGoogleFontsCssUrl,
     inferFontFormatFromFileName,
@@ -554,13 +555,30 @@ function observeFontPreviews(container) {
         if (!family || row.dataset.previewApplied === '1') return;
         row.dataset.previewApplied = '1';
         const font = (settings.importedFonts || []).find((f) => String(f?.family || '').trim() === family);
+        const nameEl = row.querySelector('.nytw-font-name');
+        const cssFamily = toCssFontFamilyValue(family);
+
+        const apply = () => {
+            if (nameEl instanceof HTMLElement) nameEl.style.fontFamily = cssFamily;
+        };
+
         try {
             await ensurePreviewFont(font || { family });
-            const nameEl = row.querySelector('.nytw-font-name');
-            if (nameEl instanceof HTMLElement) {
-                nameEl.style.fontFamily = toCssFontFamilyValue(family);
-            }
+            apply();
         } catch { /* ignore */ }
+
+        // 校验一次：如果字体其实没加载成功（大文件、读取失败等），清掉缓存重试一次
+        if (typeof document.fonts?.check === 'function') {
+            setTimeout(async () => {
+                const ok = document.fonts.check(`16px ${cssFamily}`);
+                if (ok) return;
+                try {
+                    resetPreviewFont(family);
+                    await ensurePreviewFont(font || { family });
+                    apply();
+                } catch { /* ignore */ }
+            }, 500);
+        }
     };
 
     if (typeof IntersectionObserver !== 'function') {

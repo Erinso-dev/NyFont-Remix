@@ -3698,3 +3698,42 @@
 .nytw-font-picker-popup .nytw-tag-chip {
     flex: 0 0 auto;
 }
+
+/* 输入框四角一致，避免一边直角一边圆角 */
+#nytw_settings_root .nytw-input,
+#nytw_settings_root .nytw-typo-input,
+#nytw_settings_root .nytw-reader-text-input,
+#nytw_settings_root .nytw-mini-select {
+    border-radius: 6px !important;
+}
+
+/* 弹层里的标签栏跟随浅色/深色，未选中的标签也要看得清 */
+#nytw_settings_root.nytw-fg-dark .nytw-tag-bar--popup {
+    background: #ffffff !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+#nytw_settings_root.nytw-fg-dark .nytw-tag-chip {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.18);
+    color: #232326;
+}
+
+#nytw_settings_root.nytw-fg-dark .nytw-tag-chip.is-active {
+    background: rgba(0, 0, 0, 0.12);
+    border-color: rgba(0, 0, 0, 0.35);
+}
+
+#nytw_settings_root.nytw-fg-dark .nytw-font-option-sub,
+#nytw_settings_root.nytw-fg-dark .nytw-font-option-tag {
+    color: #4a4a4f;
+}
+
+/* 搜索框：四角统一，并且给放大镜留足位置 */
+#nytw_font_search {
+    border-radius: 6px !important;
+}
+
+#nytw_font_search:focus {
+    border-radius: 6px !important;
+}
