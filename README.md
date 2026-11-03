@@ -2,7 +2,7 @@
 
 > ⚠️ **这是二次修改版（二改），不是原作者的官方版本。**
 > 原版《Ny字体管理器》由 **奈亚（xn1060）** 制作：<https://github.com/Naya1-1/Ny-font-manager>
-> 本仓库基于原版 **1.2.0** 修改，新增了标签分类、批量管理和一批排版功能，修改者为 **yadanxiao157-code**。
+> 本仓库基于原版 **1.2.0** 修改，新增了标签分类、批量管理和一批排版功能，修改者为 **Erinso-dev**。
 > 原版的功能设计、整体架构与大部分代码均归原作者所有，这里只是在此基础上做增补。如遇到问题，请先确认是不是出现在二改新增的部分。
 
 ## 📌 二改新增内容
@@ -39,7 +39,7 @@
 ## 🧩 版权与声明
 
 - 原版作者：**奈亚（xn1060）**，原仓库：<https://github.com/Naya1-1/Ny-font-manager>
-- 二改：**yadanxiao157-code**
+- 二改：**Erinso-dev**
 - 本仓库与原版仓库**互相独立**，作者更新不会自动同步到这里；合并请参考 `修改说明.md`
 - 原版 LICENSE 一并保留（见 `LICENSE.txt`）
 
@@ -48,7 +48,7 @@
 酒馆 → 扩展 → 安装扩展程序 → 填入本仓库地址：
 
 ```
-https://github.com/yadanxiao157-code/NyFont-Remix
+https://github.com/Erinso-dev/NyFont-Remix
 ```
 
 或把本文件夹放进 `public/scripts/extensions/third-party/` 后重启酒馆。
