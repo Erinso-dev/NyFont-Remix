@@ -1179,37 +1179,37 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
     };
 
     const positionPopup = () => {
-        // 把弹层挂到 body 上，用 fixed 定位：
-        // 这样不会被设置面板的 overflow 裁掉，宽度也不再受输入框限制。
-        if (popupEl.parentElement !== document.body) {
-            document.body.appendChild(popupEl);
+        // 不移动元素：只用 fixed 定位。
+        // fixed 的包含块是视口，所以面板的 overflow 裁不到它，
+        // 同时元素仍在原来的层级里，样式和事件都不受影响。
+        try {
+            const rect = inputEl.getBoundingClientRect();
+            const margin = 8;
+            const width = Math.min(320, Math.max(220, window.innerWidth - margin * 2));
+
+            let left = rect.left;
+            left = Math.min(Math.max(margin, left), Math.max(margin, window.innerWidth - width - margin));
+
+            popupEl.style.position = 'fixed';
+            popupEl.style.right = 'auto';
+            popupEl.style.bottom = 'auto';
+            popupEl.style.width = width + 'px';
+            popupEl.style.maxWidth = 'none';
+            popupEl.style.left = left + 'px';
+            // 先放到输入框下方，渲染完再按实际高度决定是否翻到上方
+            popupEl.style.maxHeight = Math.round(window.innerHeight * 0.5) + 'px';
+            popupEl.style.top = (rect.bottom + 6) + 'px';
+
+            const height = Math.min(popupEl.offsetHeight || 240, Math.round(window.innerHeight * 0.5));
+            let top = rect.bottom + 6;
+            if (top + height > window.innerHeight - margin) {
+                const up = rect.top - height - 6;
+                top = up > margin ? up : Math.max(margin, window.innerHeight - height - margin);
+            }
+            popupEl.style.top = top + 'px';
+        } catch (error) {
+            console.warn('[NyTW] positionPopup failed', error);
         }
-
-        const root = document.getElementById('nytw_settings_root');
-        popupEl.classList.toggle('nytw-fg-dark', Boolean(root?.classList?.contains('nytw-fg-dark')));
-
-        const rect = inputEl.getBoundingClientRect();
-        const margin = 8;
-        const width = Math.min(320, Math.max(240, window.innerWidth - margin * 2));
-        const height = Math.min(popupEl.offsetHeight || 240, Math.round(window.innerHeight * 0.5));
-
-        let left = rect.left;
-        left = Math.min(Math.max(margin, left), Math.max(margin, window.innerWidth - width - margin));
-
-        let top = rect.bottom + 6;
-        if (top + height > window.innerHeight - margin) {
-            const up = rect.top - height - 6;
-            top = up > margin ? up : Math.max(margin, window.innerHeight - height - margin);
-        }
-
-        popupEl.style.position = 'fixed';
-        popupEl.style.right = 'auto';
-        popupEl.style.bottom = 'auto';
-        popupEl.style.width = width + 'px';
-        popupEl.style.maxWidth = 'none';
-        popupEl.style.maxHeight = height + 'px';
-        popupEl.style.left = left + 'px';
-        popupEl.style.top = top + 'px';
     };
 
     const showPopup = () => {

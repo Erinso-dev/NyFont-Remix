@@ -3749,3 +3749,12 @@
 .nytw-font-picker-popup.nytw-fg-dark .nytw-font-option-sub {
     color: #232326 !important;
 }
+
+/* 弹层用 fixed 定位时，确认它是可见、可点击的 */
+.nytw-font-picker-popup.is-open {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    z-index: 3000 !important;
+}
