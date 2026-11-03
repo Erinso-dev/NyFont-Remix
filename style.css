@@ -3719,3 +3719,33 @@
     color: #4a4a4f;
 }
 
+
+/* 弹层已挂到 body 上，这里补齐它自己的浅色样式（不再依赖面板祖先） */
+.nytw-font-picker-popup.nytw-fg-dark {
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    color: #232326 !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+.nytw-font-picker-popup.nytw-fg-dark .nytw-tag-bar--popup {
+    background: #ffffff !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.nytw-font-picker-popup.nytw-fg-dark .nytw-tag-chip {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.18);
+    color: #232326 !important;
+}
+
+.nytw-font-picker-popup.nytw-fg-dark .nytw-tag-chip.is-active {
+    background: rgba(0, 0, 0, 0.12);
+    border-color: rgba(0, 0, 0, 0.35);
+}
+
+.nytw-font-picker-popup.nytw-fg-dark .nytw-font-option,
+.nytw-font-picker-popup.nytw-fg-dark .nytw-font-group-header,
+.nytw-font-picker-popup.nytw-fg-dark .nytw-font-option-sub {
+    color: #232326 !important;
+}

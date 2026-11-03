@@ -1179,30 +1179,37 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
     };
 
     const positionPopup = () => {
-        // 宽度固定成“舒服阅读”的 280px（面板更窄时自动缩到面板内），
-        // 位置在面板范围内做 clamp：既不会被裁切，也不会溢出。
-        const host = inputEl.closest('.nytw-content-area') || inputEl.closest('#nytw_settings_root');
-        const wrapper = popupEl.parentElement;
-        if (!host || !wrapper) return;
+        // 把弹层挂到 body 上，用 fixed 定位：
+        // 这样不会被设置面板的 overflow 裁掉，宽度也不再受输入框限制。
+        if (popupEl.parentElement !== document.body) {
+            document.body.appendChild(popupEl);
+        }
 
-        const hostRect = host.getBoundingClientRect();
-        const wrapRect = wrapper.getBoundingClientRect();
-        const inputRect = inputEl.getBoundingClientRect();
-        const gutter = 8;
+        const root = document.getElementById('nytw_settings_root');
+        popupEl.classList.toggle('nytw-fg-dark', Boolean(root?.classList?.contains('nytw-fg-dark')));
 
-        const available = Math.max(180, hostRect.width - gutter * 2);
-        const width = Math.min(280, available);
+        const rect = inputEl.getBoundingClientRect();
+        const margin = 8;
+        const width = Math.min(320, Math.max(240, window.innerWidth - margin * 2));
+        const height = Math.min(popupEl.offsetHeight || 240, Math.round(window.innerHeight * 0.5));
 
-        // 弹层相对面板的理想左边：与输入框左对齐
-        let leftInPanel = inputRect.left - hostRect.left;
-        // 收进面板内
-        const maxLeft = Math.max(gutter, hostRect.width - width - gutter);
-        leftInPanel = Math.min(Math.max(gutter, leftInPanel), maxLeft);
+        let left = rect.left;
+        left = Math.min(Math.max(margin, left), Math.max(margin, window.innerWidth - width - margin));
 
-        popupEl.style.position = 'absolute';
+        let top = rect.bottom + 6;
+        if (top + height > window.innerHeight - margin) {
+            const up = rect.top - height - 6;
+            top = up > margin ? up : Math.max(margin, window.innerHeight - height - margin);
+        }
+
+        popupEl.style.position = 'fixed';
         popupEl.style.right = 'auto';
+        popupEl.style.bottom = 'auto';
         popupEl.style.width = width + 'px';
-        popupEl.style.left = (hostRect.left - wrapRect.left + leftInPanel) + 'px';
+        popupEl.style.maxWidth = 'none';
+        popupEl.style.maxHeight = height + 'px';
+        popupEl.style.left = left + 'px';
+        popupEl.style.top = top + 'px';
     };
 
     const showPopup = () => {
