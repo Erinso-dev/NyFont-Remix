@@ -3678,12 +3678,10 @@
     line-height: 1.35;
 }
 
-/* 字体选择弹层：右对齐输入框，避免右侧出框；标签栏不被压扁 */
+/* 字体选择弹层：宽度由 JS 按面板宽度设置，这里只做兜底 */
 .nytw-font-picker-popup {
-    left: auto;
-    right: 0;
-    width: max(100%, 250px);
-    max-width: 88vw;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .nytw-font-picker-popup .nytw-tag-bar--popup {
@@ -3697,14 +3695,6 @@
 
 .nytw-font-picker-popup .nytw-tag-chip {
     flex: 0 0 auto;
-}
-
-/* 输入框四角一致，避免一边直角一边圆角 */
-#nytw_settings_root .nytw-input,
-#nytw_settings_root .nytw-typo-input,
-#nytw_settings_root .nytw-reader-text-input,
-#nytw_settings_root .nytw-mini-select {
-    border-radius: 6px !important;
 }
 
 /* 弹层里的标签栏跟随浅色/深色，未选中的标签也要看得清 */
@@ -3729,11 +3719,3 @@
     color: #4a4a4f;
 }
 
-/* 搜索框：四角统一，并且给放大镜留足位置 */
-#nytw_font_search {
-    border-radius: 6px !important;
-}
-
-#nytw_font_search:focus {
-    border-radius: 6px !important;
-}

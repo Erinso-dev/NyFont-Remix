@@ -1178,6 +1178,21 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
         delete popupEl.dataset.activeTag;
     };
 
+    const positionPopup = () => {
+        // 让弹层宽度贴合「设置面板内容区」，这样左右两边都不会被容器裁切
+        const host = inputEl.closest('.nytw-content-area') || inputEl.closest('#nytw_settings_root');
+        const wrapper = popupEl.parentElement;
+        if (!host || !wrapper) return;
+        const hostRect = host.getBoundingClientRect();
+        const wrapRect = wrapper.getBoundingClientRect();
+        const gutter = 8;
+        const width = Math.max(180, hostRect.width - gutter * 2);
+        popupEl.style.position = 'absolute';
+        popupEl.style.left = (hostRect.left - wrapRect.left + gutter) + 'px';
+        popupEl.style.right = 'auto';
+        popupEl.style.width = width + 'px';
+    };
+
     const showPopup = () => {
         const initialFilter = inputEl.readOnly ? '' : inputEl.value;
         renderContent(popupEl, initialFilter, (selectedValue, displayLabel) => {
@@ -1186,6 +1201,7 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
             hidePopup();
         });
         popupEl.classList.add('is-open');
+        positionPopup();
     };
 
     inputEl.addEventListener('focus', showPopup);
