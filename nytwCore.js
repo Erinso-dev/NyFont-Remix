@@ -1,0 +1,2815 @@
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import { eventSource, event_types, streamingProcessor } from '../../../../script.js';
+import { applyCustomIndependentFont, CUSTOM_INDEPENDENT_FONT_CLASS, CUSTOM_INDEPENDENT_FONT_MARK_ATTR } from './customIndependentFont.js';
+import { morphdom } from '../../../../lib.js';
+import {
+    isLikelyNytwMarkdownTableSource,
+    isNytwProtectedContentElement,
+    isWithinNytwProtectedContent,
+    NYTW_PROTECTED_CONTENT_SELECTOR,
+} from './nytwProtectedContent.js';
+import {
+    clampOptionalFontSize,
+    clampOptionalLetterSpacing,
+    clampOptionalLineHeight,
+    clampOptionalParagraphSpacing,
+    clampOptionalReadingPad,
+    clampOptionalTextIndent,
+    clampStreamAnimSpeed,
+    clampTextAnimIntensity,
+    clampTextAnimPeriod,
+    clampTextAnimRecentFloors,
+    getStreamRenderMode,
+    normalizeOptionalCssColor,
+    normalizeOptionalFontStyle,
+    normalizeOptionalFontWeight,
+    normalizeStreamAnimEffect,
+    normalizeStreamCursorAnim,
+    normalizeStreamCursorImageUrl,
+    normalizeStreamCursorShape,
+    normalizeTextAnimColor,
+    normalizeTextAnimEffect,
+    settings,
+} from './nytwState.js';
+import { LOCALE_KEY_PRIORITY, UNICODE_RANGES } from './nytwLocaleData.js';
+import {
+    buildFontFaceCssForFamilies,
+    collectExternalFontCssUrlsForFamilies,
+    cssQuote,
+    ensureFontStyleElement,
+    parseFontFamilyList,
+    revokeAllFontObjectUrls,
+    ensureExternalFontStylesheetsReady,
+    ensureFontFamilyUsable,
+    guessUsableFamilyByAlias,
+    getFontIssueReasonForFamily,
+    syncExternalFontStylesheets,
+    toCssFontFamilyValue,
+} from './nytwFonts.js';
+import { notify } from './nytwUtils.js';
+
+const TYPEWRITER_SELECTOR = '.custom-Ny-font-manager, .Ny-font-manager';
+const PROCESSED_ATTR = 'data-ny-tw-processed';
+const COUNT_ATTR = 'data-ny-tw-count';
+const CHAR_CLASS = 'ny-tw-char custom-ny-tw-char';
+const BUNDLE_SELECTOR = "[data-ny-bundle='1']";
+const BUNDLE_PROCESSED_ATTR = 'data-ny-bundle-processed';
+const STREAMING_MESSAGE_CLASS = 'nytw-streaming';
+const STREAM_RENDER_ATTR = 'data-nytw-stream-render';
+const STREAM_BUFFER_CLASS = 'nytw-stream-buffer';
+const STREAM_ANIM_ATTR = 'data-nytw-stream-anim';
+const STREAM_CURSOR_ATTR = 'data-nytw-stream-cursor';
+const STREAM_CURSOR_SHAPE_ATTR = 'data-nytw-stream-cursor-shape';
+const STREAM_CURSOR_ANIM_ATTR = 'data-nytw-stream-cursor-anim';
+const STREAM_SEG_CLASS = 'nytw-stream-seg';
+const STREAM_SEG_NEW_ATTR = 'data-nytw-stream-new';
+const STREAM_SEG_BR_ATTR = 'data-nytw-stream-br';
+const STREAM_SEG_WS_ATTR = 'data-nytw-stream-ws';
+const STREAM_CURSOR_CLASS = 'nytw-stream-cursor';
+const STREAM_BLOCK_HIDDEN_ATTR = 'data-nytw-stream-block-hidden';
+const STREAM_SEG_COUNT_DATA = 'nytwStreamSegCount';
+const STREAM_SHOWN_COUNT_DATA = 'nytwStreamShownCount';
+const STREAM_STEP_VAR = '--nytw-stream-step';
+const STREAM_CURSOR_IMAGE_VAR = '--nytw-stream-cursor-image';
+const READING_STYLE_ID = 'nytw-reading-style';
+const TEXT_ANIM_ATTR = 'data-nytw-text-anim';
+const TEXT_ANIM_ROLE_ATTR = 'data-nytw-text-anim-role';
+const TEXT_ANIM_BODY_WRAP_ATTR = 'data-nytw-text-anim-body-wrap';
+const TEXT_ANIM_COLOR_VAR = '--nytw-text-anim-color';
+const TEXT_ANIM_POWER_VAR = '--nytw-text-anim-power';
+const TEXT_ANIM_CYCLE_VAR = '--nytw-text-anim-cycle';
+const TEXT_ANIM_SHADOW_VAR = '--nytw-text-anim-shadow';
+const TEXT_ANIM_SHADOW_SOFT_VAR = '--nytw-text-anim-shadow-soft';
+const TEXT_ANIM_SHADOW_DEEP_VAR = '--nytw-text-anim-shadow-deep';
+const TEXT_ANIM_SHIFT_VAR = '--nytw-text-anim-shift';
+const TEXT_ANIM_SHIFT_NEG_VAR = '--nytw-text-anim-shift-neg';
+const TEXT_ANIM_SHIFT_SOFT_VAR = '--nytw-text-anim-shift-soft';
+const TEXT_ANIM_SHIFT_SOFT_NEG_VAR = '--nytw-text-anim-shift-soft-neg';
+const TEXT_ANIM_DIM_VAR = '--nytw-text-anim-dim';
+const TEXT_ANIM_VEIL_VAR = '--nytw-text-anim-veil';
+const TEXT_ANIM_DIALOGUE_SELECTOR = '.Ny-font-manager, .custom-Ny-font-manager, .ny-dialogue, .custom-ny-dialogue, q';
+const TEXT_ANIM_BODY_BLOCK_SELECTOR = 'p, li, blockquote, h1, h2, h3, h4, h5, h6';
+const TEXT_ANIM_SKIP_SELECTOR = NYTW_PROTECTED_CONTENT_SELECTOR;
+
+const LOCALE_FONT_ATTR = 'data-nytw-locale-font';
+const LOCALE_WRAP_ATTR = 'data-nytw-locale-wrap';
+
+const DIALOGUE_QUOTE_PAIRS = [
+    ['"', '"'],
+    ['\u201C', '\u201D'], // “ ”
+    ['\uFF02', '\uFF02'], // ＂ ＂
+    ['\'', '\''],
+    ['\u2018', '\u2019'], // ‘ ’
+    ['\uFF07', '\uFF07'], // ＇ ＇
+];
+
+const dialogueFontProcessSig = new WeakMap();
+const localeFontProcessSig = new WeakMap();
+const streamTypewriterTimers = new WeakMap();
+
+const graphemeSegmenter = (typeof Intl !== 'undefined' && Intl.Segmenter)
+    ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+    : null;
+
+const streamAnimSegmenters = new Map();
+function getStreamAnimSegmenter(granularity) {
+    if (typeof Intl === 'undefined' || typeof Intl.Segmenter !== 'function') return null;
+    const key = String(granularity || 'word');
+    if (streamAnimSegmenters.has(key)) return streamAnimSegmenters.get(key);
+    const seg = new Intl.Segmenter(undefined, { granularity: key });
+    streamAnimSegmenters.set(key, seg);
+    return seg;
+}
+
+function getActiveStreamingMessageId() {
+    const sp = streamingProcessor;
+    const isActive = Boolean(sp && !sp.isFinished && !sp.isStopped);
+    return isActive && Number.isFinite(Number(sp.messageId)) ? String(sp.messageId) : null;
+}
+
+
+let applyFontsQueue = Promise.resolve();
+function queueApplyFonts() {
+    applyFontsQueue = applyFontsQueue
+        .then(applyFontSettings)
+        .catch((error) => console.error('[NyTW] Failed to apply fonts', error));
+}
+
+const PARA_LINE_CLASS = 'nytw-para-line';
+const PARA_BLOCK_TAGS = new Set(['P','DIV','SECTION','ARTICLE','LI','UL','OL','BLOCKQUOTE','DETAILS','SUMMARY','H1','H2','H3','H4','H5','H6','TABLE','PRE','FIGURE','HEADER','FOOTER','ASIDE']);
+const PARA_OPAQUE_SELECTOR = 'pre, code, table, iframe, ul, ol, textarea, .ny-tw-char';
+const PARA_MARK_ATTR = 'data-nytw-paragraphs';
+const PARA_MARK_VERSION = '2';
+let paraRewriteTimer = 0;
+
+/* ---------------- 逐行成段（改 DOM，可还原） ---------------- */
+
+function restoreParagraphRewrite(scope = document) {
+    const root = scope && typeof scope.querySelectorAll === 'function' ? scope : document;
+    const spans = root.querySelectorAll?.(`.${PARA_LINE_CLASS}`) || [];
+    for (const span of spans) {
+        const parent = span.parentNode;
+        if (!parent) continue;
+        while (span.firstChild) parent.insertBefore(span.firstChild, span);
+        parent.removeChild(span);
+    }
+    const marked = root.querySelectorAll?.(`[${PARA_MARK_ATTR}]`) || [];
+    for (const el of marked) el.removeAttribute(PARA_MARK_ATTR);
+}
+
+function splitBlockByBreaks(block) {
+    if (!(block instanceof HTMLElement)) return 0;
+    let created = 0;
+    const nodes = Array.from(block.childNodes);
+    let group = [];
+
+    const flush = () => {
+        if (!group.length) return;
+        const hasText = group.some((node) => String(node.textContent || '').trim());
+        const first = group[0];
+        if (hasText && first.parentNode) {
+            const span = document.createElement('span');
+            span.className = PARA_LINE_CLASS;
+            first.parentNode.insertBefore(span, first);
+            for (const node of group) span.appendChild(node);
+            created += 1;
+        }
+        group = [];
+    };
+
+    for (const node of nodes) {
+        if (node.nodeType === 1 && node.tagName === 'BR') {
+            flush();
+            continue;
+        }
+        // 复杂/交互内容原样保留
+        if (node.nodeType === 1 && node.matches?.(PARA_OPAQUE_SELECTOR)) {
+            flush();
+            continue;
+        }
+        if (node.nodeType === 1) {
+            const isBlock = PARA_BLOCK_TAGS.has(node.tagName);
+            // 块级容器：永远不被包进段落，只在内部继续拆
+            if (isBlock) {
+                flush();
+                if (node.querySelector('br')) created += splitBlockByBreaks(node);
+                continue;
+            }
+            // 行内容器（如美化包的 <content>）内部还有换行，就下钻
+            if (!node.classList.contains(PARA_LINE_CLASS) && node.querySelector('br')) {
+                flush();
+                created += splitBlockByBreaks(node);
+                continue;
+            }
+        }
+        group.push(node);
+    }
+    flush();
+    return created;
+}
+
+function splitMessageIntoParagraphs(el) {
+    if (!(el instanceof HTMLElement)) return 0;
+    const markVersion = el.getAttribute(PARA_MARK_ATTR);
+    if (markVersion === PARA_MARK_VERSION && el.querySelector(`.${PARA_LINE_CLASS}`)) return 0;
+    // 旧版本留下的结构：先还原再重做
+    if (markVersion && markVersion !== PARA_MARK_VERSION) restoreParagraphRewrite(el);
+    if (el.closest(`.mes.${STREAMING_MESSAGE_CLASS}`)) return 0;
+    // 字符动画 / 沉浸式阅读接管过的内容不碰
+    if (el.querySelector('.ny-tw-char, .stir-owned-line-paragraph')) return 0;
+    // 编辑态（textarea / 编辑工具条）不碰，避免按钮错位
+    if (el.querySelector('textarea, .mes_edit, .mes_edit_buttons, .edit_textarea')) return 0;
+    if (el.closest('.mes.editing, .mes.is-editing')) return 0;
+    if (!el.querySelector('br')) return 0;
+
+    const created = splitBlockByBreaks(el);
+    if (created > 0) el.setAttribute(PARA_MARK_ATTR, PARA_MARK_VERSION);
+    return created;
+}
+
+function applyParagraphRewrite() {
+    const stats = { messages: 0, withBr: 0, created: 0 };
+    const enabled = settings.readingStyleEnabled === true && settings.splitLinesToParagraphs === true;
+    if (!enabled) {
+        if (document.querySelector?.(`.${PARA_LINE_CLASS}`)) restoreParagraphRewrite(document);
+        return stats;
+    }
+    const chat = document.getElementById('chat');
+    if (!chat) return stats;
+
+    const targets = chat.querySelectorAll('.mes_text');
+    stats.messages = targets.length;
+    targets.forEach((el) => {
+        if (el.querySelector?.('br')) stats.withBr += 1;
+        stats.created += splitMessageIntoParagraphs(el);
+    });
+    return stats;
+}
+
+function scheduleParagraphRewrite() {
+    if (paraRewriteTimer) return;
+    paraRewriteTimer = setTimeout(() => {
+        paraRewriteTimer = 0;
+        try { applyParagraphRewrite(); } catch (error) { console.warn('[NyTW] paragraph rewrite failed', error); }
+    }, 260);
+}
+
+
+/* ---------------- UI 修正补丁（运行时注入，避免被缓存或顺序影响） ---------------- */
+
+const UI_PATCH_STYLE_ID = 'nytw-ui-patch';
+const UI_PATCH_CSS = [
+    /* 隐藏的 checkbox 会被酒馆样式拉回布局，占宽把滑轨推歪 */
+    '.nytw-switch input[type="checkbox"]{position:absolute !important;width:0 !important;height:0 !important;margin:0 !important;padding:0 !important;opacity:0 !important;pointer-events:none !important;}',
+    '.nytw-switch input{position:absolute !important;width:0 !important;height:0 !important;margin:0 !important;opacity:0 !important;pointer-events:none !important;}',
+    '.nytw-switch-slider{flex:0 0 auto;}',
+    '.nytw-content-area{scrollbar-gutter:stable;}',
+    /* 亮底时面板内部统一用自定的深色文字（不依赖任何主题变量，也不动标题栏） */
+    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container,',
+    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container :where(div,span,p,label,b,small,li,strong,em,i,a,button,pre,option){color:#232326 !important;}',
+    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container input,',
+    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container select,',
+    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container textarea{color:#232326 !important;-webkit-text-fill-color:#232326 !important;}',
+    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container input::placeholder,',
+    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container textarea::placeholder{color:rgba(35,35,38,0.45) !important;-webkit-text-fill-color:rgba(35,35,38,0.45) !important;opacity:1 !important;}',
+    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container .nytw-help,',
+    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container .nytw-font-sub{color:rgba(35,35,38,0.55) !important;}',
+    /* 深色浮层在亮底上改白底，避免黑底黑字 */
+    '#nytw_settings_root.nytw-fg-dark .nytw-tag-panel,',
+    '#nytw_settings_root.nytw-fg-dark .nytw-diag-box,',
+    '#nytw_settings_root.nytw-fg-dark .nytw-batch-bar,',
+    '#nytw_settings_root.nytw-fg-dark .nytw-font-picker-popup{background:#ffffff !important;border-color:rgba(0,0,0,0.12) !important;}',
+].join('\n');
+
+
+
+/* ---------------- 面板配色自适应：根据实际底色选文字色 ---------------- */
+
+function getEffectiveBgLuminance(el) {
+    let node = el;
+    while (node && node instanceof HTMLElement) {
+        const bg = getComputedStyle(node).backgroundColor;
+        const match = String(bg).match(/rgba?\(([^)]+)\)/i);
+        if (match) {
+            const parts = match[1].split(',').map((n) => Number.parseFloat(n.trim()));
+            const alpha = parts.length > 3 ? parts[3] : 1;
+            if (Number.isFinite(alpha) && alpha > 0.6) {
+                const [r, g, b] = parts;
+                return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            }
+        }
+        node = node.parentElement;
+    }
+    return 0.2;
+}
+
+export function syncFieldMetrics() {
+    const root = document.getElementById('nytw_settings_root');
+    if (!(root instanceof HTMLElement)) return;
+    const sample = root.querySelector('.nytw-mini-select');
+    if (!(sample instanceof HTMLElement)) return;
+    const cs = getComputedStyle(sample);
+    const metrics = {
+        height: cs.height,
+        'font-size': cs.fontSize,
+        'font-family': cs.fontFamily,
+        'line-height': cs.lineHeight,
+    };
+    root.querySelectorAll('.nytw-typo-input').forEach((el) => {
+        if (!(el instanceof HTMLElement)) return;
+        for (const [prop, value] of Object.entries(metrics)) {
+            if (value) el.style.setProperty(prop, value, 'important');
+        }
+    });
+}
+
+export function applyPanelSkin() {
+    const root = document.getElementById('nytw_settings_root');
+    if (!(root instanceof HTMLElement)) return;
+    const parent = root.parentElement instanceof HTMLElement ? root.parentElement : root;
+    // 底色亮 → 需要把文字转成深色（颜色写死，不依赖主题变量）
+    root.classList.toggle('nytw-fg-dark', getEffectiveBgLuminance(parent) > 0.55);
+}
+
+function ensureUiPatchStyle() {
+    if (document.getElementById(UI_PATCH_STYLE_ID)) return;
+    const styleEl = document.createElement('style');
+    styleEl.id = UI_PATCH_STYLE_ID;
+    styleEl.textContent = UI_PATCH_CSS;
+    document.head.appendChild(styleEl);
+}
+
+
+
+
+
+ensureUiPatchStyle();
+
+function ensureReadingStyleElement() {
+    let styleEl = document.getElementById(READING_STYLE_ID);
+    if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = READING_STYLE_ID;
+        document.head.appendChild(styleEl);
+    }
+    return styleEl;
+}
+
+function removeReadingStyleElement() {
+    document.getElementById(READING_STYLE_ID)?.remove();
+}
+
+function getNormalizedTypographyValues() {
+    return {
+        overallFontSize: clampOptionalFontSize(settings.overallFontSize),
+        overallLetterSpacing: clampOptionalLetterSpacing(settings.overallLetterSpacing),
+        overallLineHeight: clampOptionalLineHeight(settings.overallLineHeight),
+        overallTextColor: normalizeOptionalCssColor(settings.overallTextColor),
+        italicTextColor: normalizeOptionalCssColor(settings.italicTextColor),
+        overallParagraphSpacing: clampOptionalParagraphSpacing(settings.overallParagraphSpacing),
+        overallTextIndent: clampOptionalTextIndent(settings.overallTextIndent),
+        overallFontWeight: normalizeOptionalFontWeight(settings.overallFontWeight),
+        overallFontStyle: normalizeOptionalFontStyle(settings.overallFontStyle),
+        bodyFontSize: clampOptionalFontSize(settings.bodyFontSize),
+        bodyLetterSpacing: clampOptionalLetterSpacing(settings.bodyLetterSpacing),
+        bodyLineHeight: clampOptionalLineHeight(settings.lineHeight),
+        bodyTextColor: normalizeOptionalCssColor(settings.bodyTextColor),
+        bodyParagraphSpacing: clampOptionalParagraphSpacing(settings.bodyParagraphSpacing),
+        bodyTextIndent: clampOptionalTextIndent(settings.bodyTextIndent),
+        readingPadLeft: clampOptionalReadingPad(settings.readingPadLeft),
+        readingPadRight: clampOptionalReadingPad(settings.readingPadRight),
+        bodyFontWeight: normalizeOptionalFontWeight(settings.bodyFontWeight),
+        bodyFontStyle: normalizeOptionalFontStyle(settings.bodyFontStyle),
+        dialogueFontSize: clampOptionalFontSize(settings.dialogueFontSize),
+        dialogueLetterSpacing: clampOptionalLetterSpacing(settings.dialogueLetterSpacing),
+        dialogueLineHeight: clampOptionalLineHeight(settings.dialogueLineHeight),
+        dialogueTextColor: normalizeOptionalCssColor(settings.dialogueTextColor),
+        dialogueParagraphSpacing: clampOptionalParagraphSpacing(settings.dialogueParagraphSpacing),
+        dialogueTextIndent: clampOptionalTextIndent(settings.dialogueTextIndent),
+        dialogueFontWeight: normalizeOptionalFontWeight(settings.dialogueFontWeight),
+        dialogueFontStyle: normalizeOptionalFontStyle(settings.dialogueFontStyle),
+        customFontSize: clampOptionalFontSize(settings.customFontSize),
+        customLetterSpacing: clampOptionalLetterSpacing(settings.customLetterSpacing),
+        localeFontSize: clampOptionalFontSize(settings.localeFontSize),
+        localeLetterSpacing: clampOptionalLetterSpacing(settings.localeLetterSpacing),
+    };
+}
+
+function hasReadingStyleValue(value) {
+    return value !== null && value !== undefined && String(value).trim() !== '';
+}
+
+function hasAnyReadingStyleValue(values, keys) {
+    return keys.some((key) => hasReadingStyleValue(values[key]));
+}
+
+function cssVarChain(varNames) {
+    return varNames.reduceRight((fallback, name) => (
+        fallback ? `var(${name},${fallback})` : `var(${name})`
+    ), '');
+}
+
+function pushReadingDeclaration(declarations, values, keys, property, varNames) {
+    if (!hasAnyReadingStyleValue(values, keys)) return;
+    declarations.push(`${property}:${cssVarChain(varNames)} !important;`);
+}
+
+function pushReadingRule(css, selectors, declarations) {
+    if (!declarations.length) return;
+    css.push(`\n${selectors.join(',')}{`, ...declarations, '}');
+}
+
+function buildReadingStyleCss() {
+    const values = getNormalizedTypographyValues();
+    const css = ['/* NyTW Reading Style (generated) */'];
+
+    const bodyDeclarations = [];
+    pushReadingDeclaration(bodyDeclarations, values, ['bodyFontSize', 'overallFontSize'], 'font-size', ['--nytw-body-font-size', '--nytw-overall-font-size']);
+    pushReadingDeclaration(bodyDeclarations, values, ['bodyLetterSpacing', 'overallLetterSpacing'], 'letter-spacing', ['--nytw-body-letter-spacing', '--nytw-overall-letter-spacing']);
+    pushReadingDeclaration(bodyDeclarations, values, ['bodyLineHeight', 'overallLineHeight'], 'line-height', ['--nytw-body-line-height', '--nytw-overall-line-height']);
+
+    pushReadingDeclaration(bodyDeclarations, values, ['bodyFontWeight', 'overallFontWeight'], 'font-weight', ['--nytw-body-font-weight', '--nytw-overall-font-weight']);
+    pushReadingDeclaration(bodyDeclarations, values, ['bodyFontStyle', 'overallFontStyle'], 'font-style', ['--nytw-body-font-style', '--nytw-overall-font-style']);
+    pushReadingRule(css, [
+        '#chat .mes_text',
+        '#chat .mes_text i',
+        '#chat .mes_text em',
+        '#chat .mes_text u',
+        '#chat .mes_text strong',
+    ], bodyDeclarations);
+
+    // 编辑/操作按钮不继承首行缩进，否则按钮会被推到右边
+    if (hasAnyReadingStyleValue(values, ['bodyTextIndent', 'overallTextIndent'])) {
+        pushReadingRule(css, [
+            '#chat .mes_text textarea',
+            '#chat .mes_text .mes_edit',
+            '#chat .mes_text .mes_edit_buttons',
+            '#chat .mes_text .mes_edit_buttons *',
+            '#chat .mes_text .mes_buttons',
+            '#chat .mes_text .mes_buttons *',
+        ], ['text-indent:0 !important;']);
+    }
+
+    // 左右内边距（分别设置，用于补偿美化自带的不对称留白）
+    const padDeclarations = [];
+    if (hasReadingStyleValue(values.readingPadLeft) || hasReadingStyleValue(values.readingPadRight)) {
+        padDeclarations.push('padding-left:var(--nytw-pad-left,0) !important;');
+        padDeclarations.push('padding-right:var(--nytw-pad-right,0) !important;');
+    }
+    pushReadingRule(css, ['#chat .mes_text'], padDeclarations);
+    if (padDeclarations.length) {
+        pushReadingRule(css, ['#chat .mes_text:has(textarea)'], [
+            'padding-left:0 !important;',
+            'padding-right:0 !important;',
+        ]);
+    }
+
+    // 两端对齐
+    if (settings.readingJustify === true) {
+        pushReadingRule(css, ['#chat .mes_text'], [
+            'text-align:justify !important;',
+            'text-justify:inter-ideograph !important;',
+        ]);
+    }
+
+    // 兜底：没有被子拆分的块，用 <br> 表现段距，保证整页段距一致
+    if (settings.splitLinesToParagraphs === true) {
+        const fallbackGap = 'var(--nytw-body-paragraph-spacing,var(--nytw-overall-paragraph-spacing,0.6em))';
+        pushReadingRule(css, ['#chat .mes_text:not([data-nytw-paragraphs]) br'], [
+            'display:block !important;',
+            'height:0 !important;',
+            'margin:0 !important;',
+            `margin-top:${fallbackGap} !important;`,
+            `margin-bottom:${fallbackGap} !important;`,
+        ]);
+        pushReadingRule(css, [
+            '#chat .mes_text:not([data-nytw-paragraphs]) pre br',
+            '#chat .mes_text:not([data-nytw-paragraphs]) code br',
+        ], [
+            'display:none !important;',
+            'margin:0 !important;',
+        ]);
+    }
+
+    // 逐行成段：每行包成块级 span，首行缩进才会逐行生效
+    if (settings.splitLinesToParagraphs === true) {
+        const paraGap = 'var(--nytw-body-paragraph-spacing,var(--nytw-overall-paragraph-spacing,0.6em))';
+        pushReadingRule(css, [`#chat .mes_text .${PARA_LINE_CLASS}`], [
+            'display:block !important;',
+            'text-indent:var(--nytw-body-text-indent,var(--nytw-overall-text-indent,0em)) !important;',
+        ]);
+        pushReadingRule(css, [`#chat .mes_text[${PARA_MARK_ATTR}] br`], [
+            'display:none !important;',
+            'margin:0 !important;',
+            'height:0 !important;',
+        ]);
+        pushReadingRule(css, [`#chat .mes_text .${PARA_LINE_CLASS} ~ .${PARA_LINE_CLASS}`], [
+            `margin-top:${paraGap} !important;`,
+        ]);
+        pushReadingRule(css, [`#chat .mes_text .${PARA_LINE_CLASS}`], [
+            `margin-bottom:${paraGap} !important;`,
+        ]);
+    }
+
+    const bodyColorDeclarations = [];
+    pushReadingDeclaration(bodyColorDeclarations, values, ['bodyTextColor', 'overallTextColor'], 'color', ['--nytw-body-text-color', '--nytw-overall-text-color']);
+    pushReadingRule(css, ['#chat .mes_text'], bodyColorDeclarations);
+
+    const italicDeclarations = [];
+    pushReadingDeclaration(italicDeclarations, values, ['italicTextColor', 'bodyTextColor', 'overallTextColor'], 'color', ['--nytw-italic-text-color', '--nytw-body-text-color', '--nytw-overall-text-color']);
+    pushReadingRule(css, ['#chat .mes_text i', '#chat .mes_text em'], italicDeclarations);
+    if (italicDeclarations.length) {
+        pushReadingRule(css, ['#chat .mes_text q i', '#chat .mes_text q em'], ['color:inherit !important;']);
+    }
+
+    const bodyBlockDeclarations = [];
+    pushReadingDeclaration(bodyBlockDeclarations, values, ['bodyParagraphSpacing', 'overallParagraphSpacing'], 'margin-top', ['--nytw-body-paragraph-spacing', '--nytw-overall-paragraph-spacing']);
+    pushReadingDeclaration(bodyBlockDeclarations, values, ['bodyParagraphSpacing', 'overallParagraphSpacing'], 'margin-bottom', ['--nytw-body-paragraph-spacing', '--nytw-overall-paragraph-spacing']);
+    pushReadingDeclaration(bodyBlockDeclarations, values, ['bodyTextIndent', 'overallTextIndent'], 'text-indent', ['--nytw-body-text-indent', '--nytw-overall-text-indent']);
+    pushReadingRule(css, ['#chat .mes_text p', '#chat .mes_text li', '#chat .mes_text blockquote'], bodyBlockDeclarations);
+
+    const dialogueDeclarations = [];
+    pushReadingDeclaration(dialogueDeclarations, values, ['dialogueFontSize', 'bodyFontSize', 'overallFontSize'], 'font-size', ['--nytw-dialogue-font-size', '--nytw-body-font-size', '--nytw-overall-font-size']);
+    pushReadingDeclaration(dialogueDeclarations, values, ['dialogueLetterSpacing', 'bodyLetterSpacing', 'overallLetterSpacing'], 'letter-spacing', ['--nytw-dialogue-letter-spacing', '--nytw-body-letter-spacing', '--nytw-overall-letter-spacing']);
+    pushReadingDeclaration(dialogueDeclarations, values, ['dialogueLineHeight', 'bodyLineHeight', 'overallLineHeight'], 'line-height', ['--nytw-dialogue-line-height', '--nytw-body-line-height', '--nytw-overall-line-height']);
+    pushReadingDeclaration(dialogueDeclarations, values, ['dialogueTextColor', 'bodyTextColor', 'overallTextColor'], 'color', ['--nytw-dialogue-text-color', '--nytw-body-text-color', '--nytw-overall-text-color']);
+    pushReadingDeclaration(dialogueDeclarations, values, ['dialogueTextIndent', 'bodyTextIndent', 'overallTextIndent'], 'text-indent', ['--nytw-dialogue-text-indent', '--nytw-body-text-indent', '--nytw-overall-text-indent']);
+    pushReadingDeclaration(dialogueDeclarations, values, ['dialogueTextIndent', 'bodyTextIndent', 'overallTextIndent'], 'padding-left', ['--nytw-dialogue-text-indent', '--nytw-body-text-indent', '--nytw-overall-text-indent']);
+    pushReadingDeclaration(dialogueDeclarations, values, ['dialogueFontWeight', 'bodyFontWeight', 'overallFontWeight'], 'font-weight', ['--nytw-dialogue-font-weight', '--nytw-body-font-weight', '--nytw-overall-font-weight']);
+    pushReadingDeclaration(dialogueDeclarations, values, ['dialogueFontStyle', 'bodyFontStyle', 'overallFontStyle'], 'font-style', ['--nytw-dialogue-font-style', '--nytw-body-font-style', '--nytw-overall-font-style']);
+    pushReadingRule(css, [
+        '#chat .mes_text .Ny-font-manager',
+        '#chat .mes_text .custom-Ny-font-manager',
+        '#chat .mes_text .ny-dialogue',
+        '#chat .mes_text .custom-ny-dialogue',
+        '#chat .mes_text q',
+    ], dialogueDeclarations);
+
+    const dialogueDescendantDeclarations = [];
+    pushReadingDeclaration(dialogueDescendantDeclarations, values, ['dialogueFontSize', 'bodyFontSize', 'overallFontSize'], 'font-size', ['--nytw-dialogue-font-size', '--nytw-body-font-size', '--nytw-overall-font-size']);
+    pushReadingDeclaration(dialogueDescendantDeclarations, values, ['dialogueLetterSpacing', 'bodyLetterSpacing', 'overallLetterSpacing'], 'letter-spacing', ['--nytw-dialogue-letter-spacing', '--nytw-body-letter-spacing', '--nytw-overall-letter-spacing']);
+    pushReadingDeclaration(dialogueDescendantDeclarations, values, ['dialogueLineHeight', 'bodyLineHeight', 'overallLineHeight'], 'line-height', ['--nytw-dialogue-line-height', '--nytw-body-line-height', '--nytw-overall-line-height']);
+    pushReadingDeclaration(dialogueDescendantDeclarations, values, ['dialogueFontWeight', 'bodyFontWeight', 'overallFontWeight'], 'font-weight', ['--nytw-dialogue-font-weight', '--nytw-body-font-weight', '--nytw-overall-font-weight']);
+    pushReadingDeclaration(dialogueDescendantDeclarations, values, ['dialogueFontStyle', 'bodyFontStyle', 'overallFontStyle'], 'font-style', ['--nytw-dialogue-font-style', '--nytw-body-font-style', '--nytw-overall-font-style']);
+    pushReadingRule(css, [
+        '#chat .mes_text .Ny-font-manager *',
+        '#chat .mes_text .custom-Ny-font-manager *',
+        '#chat .mes_text .ny-dialogue *',
+        '#chat .mes_text .custom-ny-dialogue *',
+        '#chat .mes_text q *',
+    ], dialogueDescendantDeclarations);
+
+    const dialogueBlockDeclarations = [];
+    pushReadingDeclaration(dialogueBlockDeclarations, values, ['dialogueParagraphSpacing', 'bodyParagraphSpacing', 'overallParagraphSpacing'], 'margin-top', ['--nytw-dialogue-paragraph-spacing', '--nytw-body-paragraph-spacing', '--nytw-overall-paragraph-spacing']);
+    pushReadingDeclaration(dialogueBlockDeclarations, values, ['dialogueParagraphSpacing', 'bodyParagraphSpacing', 'overallParagraphSpacing'], 'margin-bottom', ['--nytw-dialogue-paragraph-spacing', '--nytw-body-paragraph-spacing', '--nytw-overall-paragraph-spacing']);
+    pushReadingDeclaration(dialogueBlockDeclarations, values, ['dialogueTextIndent', 'bodyTextIndent', 'overallTextIndent'], 'text-indent', ['--nytw-dialogue-text-indent', '--nytw-body-text-indent', '--nytw-overall-text-indent']);
+    pushReadingRule(css, [
+        '#chat .mes_text .Ny-font-manager p',
+        '#chat .mes_text .custom-Ny-font-manager p',
+        '#chat .mes_text .ny-dialogue p',
+        '#chat .mes_text .custom-ny-dialogue p',
+    ], dialogueBlockDeclarations);
+
+    return css.join('');
+}
+
+function applyReadingStyleRules() {
+    ensureReadingStyleElement().textContent = buildReadingStyleCss();
+}
+
+function setOrRemoveCssVar(el, name, value) {
+    if (!el || !(el instanceof HTMLElement)) return;
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+        el.style.removeProperty(name);
+        return;
+    }
+    el.style.setProperty(name, raw);
+}
+
+function clearTypographyVariables(chatEl) {
+    if (!chatEl || !(chatEl instanceof HTMLElement)) return;
+
+    chatEl.style.removeProperty('--nytw-body-font-size');
+    chatEl.style.removeProperty('--nytw-body-letter-spacing');
+    chatEl.style.removeProperty('--nytw-body-line-height');
+    chatEl.style.removeProperty('--nytw-body-text-color');
+    chatEl.style.removeProperty('--nytw-italic-text-color');
+    chatEl.style.removeProperty('--nytw-body-paragraph-spacing');
+    chatEl.style.removeProperty('--nytw-body-text-indent');
+    chatEl.style.removeProperty('--nytw-pad-left');
+    chatEl.style.removeProperty('--nytw-pad-right');
+    chatEl.style.removeProperty('--nytw-body-font-weight');
+    chatEl.style.removeProperty('--nytw-body-font-style');
+    chatEl.style.removeProperty('--nytw-overall-font-size');
+    chatEl.style.removeProperty('--nytw-overall-letter-spacing');
+    chatEl.style.removeProperty('--nytw-overall-line-height');
+    chatEl.style.removeProperty('--nytw-overall-text-color');
+    chatEl.style.removeProperty('--nytw-overall-paragraph-spacing');
+    chatEl.style.removeProperty('--nytw-overall-text-indent');
+    chatEl.style.removeProperty('--nytw-overall-font-weight');
+    chatEl.style.removeProperty('--nytw-overall-font-style');
+    chatEl.style.removeProperty('--nytw-dialogue-font-size');
+    chatEl.style.removeProperty('--nytw-dialogue-letter-spacing');
+    chatEl.style.removeProperty('--nytw-dialogue-line-height');
+    chatEl.style.removeProperty('--nytw-dialogue-text-color');
+    chatEl.style.removeProperty('--nytw-dialogue-paragraph-spacing');
+    chatEl.style.removeProperty('--nytw-dialogue-text-indent');
+    chatEl.style.removeProperty('--nytw-dialogue-font-weight');
+    chatEl.style.removeProperty('--nytw-dialogue-font-style');
+    chatEl.style.removeProperty('--nytw-custom-font-size');
+    chatEl.style.removeProperty('--nytw-custom-letter-spacing');
+    chatEl.style.removeProperty('--nytw-locale-font-size');
+    chatEl.style.removeProperty('--nytw-locale-letter-spacing');
+    chatEl.style.removeProperty('--nytw-line-height');
+}
+
+function applyTypographyVariables() {
+    const chatEl = document.getElementById('chat');
+
+    if (settings.readingStyleEnabled !== true) {
+        if (chatEl) clearTypographyVariables(chatEl);
+        removeReadingStyleElement();
+        return;
+    }
+
+    applyReadingStyleRules();
+    if (!chatEl) return;
+
+    const {
+        overallFontSize,
+        overallLetterSpacing,
+        overallLineHeight,
+        overallTextColor,
+        italicTextColor,
+        overallParagraphSpacing,
+        overallTextIndent,
+        overallFontWeight,
+        overallFontStyle,
+        bodyFontSize,
+        bodyLetterSpacing,
+        bodyLineHeight,
+        bodyTextColor,
+        bodyParagraphSpacing,
+        bodyTextIndent,
+        readingPadLeft,
+        readingPadRight,
+        bodyFontWeight,
+        bodyFontStyle,
+        dialogueFontSize,
+        dialogueLetterSpacing,
+        dialogueLineHeight,
+        dialogueTextColor,
+        dialogueParagraphSpacing,
+        dialogueTextIndent,
+        dialogueFontWeight,
+        dialogueFontStyle,
+        customFontSize,
+        customLetterSpacing,
+        localeFontSize,
+        localeLetterSpacing,
+    } = getNormalizedTypographyValues();
+
+    setOrRemoveCssVar(chatEl, '--nytw-overall-font-size', overallFontSize === null ? '' : `${overallFontSize}px`);
+    setOrRemoveCssVar(chatEl, '--nytw-overall-letter-spacing', overallLetterSpacing === null ? '' : `${overallLetterSpacing}em`);
+    setOrRemoveCssVar(chatEl, '--nytw-overall-line-height', overallLineHeight === null ? '' : String(overallLineHeight));
+    setOrRemoveCssVar(chatEl, '--nytw-overall-text-color', overallTextColor);
+    setOrRemoveCssVar(chatEl, '--nytw-italic-text-color', italicTextColor);
+    setOrRemoveCssVar(chatEl, '--nytw-overall-paragraph-spacing', overallParagraphSpacing === null ? '' : `${overallParagraphSpacing}em`);
+    setOrRemoveCssVar(chatEl, '--nytw-overall-text-indent', overallTextIndent === null ? '' : `${overallTextIndent}em`);
+    setOrRemoveCssVar(chatEl, '--nytw-overall-font-weight', overallFontWeight);
+    setOrRemoveCssVar(chatEl, '--nytw-overall-font-style', overallFontStyle);
+    setOrRemoveCssVar(chatEl, '--nytw-body-font-size', bodyFontSize === null ? '' : `${bodyFontSize}px`);
+    setOrRemoveCssVar(chatEl, '--nytw-body-letter-spacing', bodyLetterSpacing === null ? '' : `${bodyLetterSpacing}em`);
+    setOrRemoveCssVar(chatEl, '--nytw-body-line-height', bodyLineHeight === null ? '' : String(bodyLineHeight));
+    setOrRemoveCssVar(chatEl, '--nytw-body-text-color', bodyTextColor);
+    setOrRemoveCssVar(chatEl, '--nytw-body-paragraph-spacing', bodyParagraphSpacing === null ? '' : `${bodyParagraphSpacing}em`);
+    setOrRemoveCssVar(chatEl, '--nytw-body-text-indent', bodyTextIndent === null ? '' : `${bodyTextIndent}em`);
+    setOrRemoveCssVar(chatEl, '--nytw-pad-left', readingPadLeft === null ? '' : `${readingPadLeft}em`);
+    setOrRemoveCssVar(chatEl, '--nytw-pad-right', readingPadRight === null ? '' : `${readingPadRight}em`);
+    setOrRemoveCssVar(chatEl, '--nytw-body-font-weight', bodyFontWeight);
+    setOrRemoveCssVar(chatEl, '--nytw-body-font-style', bodyFontStyle);
+    setOrRemoveCssVar(chatEl, '--nytw-dialogue-font-size', dialogueFontSize === null ? '' : `${dialogueFontSize}px`);
+    setOrRemoveCssVar(chatEl, '--nytw-dialogue-letter-spacing', dialogueLetterSpacing === null ? '' : `${dialogueLetterSpacing}em`);
+    setOrRemoveCssVar(chatEl, '--nytw-dialogue-line-height', dialogueLineHeight === null ? '' : String(dialogueLineHeight));
+    setOrRemoveCssVar(chatEl, '--nytw-dialogue-text-color', dialogueTextColor);
+    setOrRemoveCssVar(chatEl, '--nytw-dialogue-paragraph-spacing', dialogueParagraphSpacing === null ? '' : `${dialogueParagraphSpacing}em`);
+    setOrRemoveCssVar(chatEl, '--nytw-dialogue-text-indent', dialogueTextIndent === null ? '' : `${dialogueTextIndent}em`);
+    setOrRemoveCssVar(chatEl, '--nytw-dialogue-font-weight', dialogueFontWeight);
+    setOrRemoveCssVar(chatEl, '--nytw-dialogue-font-style', dialogueFontStyle);
+    setOrRemoveCssVar(chatEl, '--nytw-custom-font-size', customFontSize === null ? '' : `${customFontSize}px`);
+    setOrRemoveCssVar(chatEl, '--nytw-custom-letter-spacing', customLetterSpacing === null ? '' : `${customLetterSpacing}em`);
+    setOrRemoveCssVar(chatEl, '--nytw-locale-font-size', localeFontSize === null ? '' : `${localeFontSize}px`);
+    setOrRemoveCssVar(chatEl, '--nytw-locale-letter-spacing', localeLetterSpacing === null ? '' : `${localeLetterSpacing}em`);
+    setOrRemoveCssVar(chatEl, '--nytw-line-height', bodyLineHeight === null ? '' : String(bodyLineHeight));
+
+    scheduleParagraphRewrite();
+}
+
+const fontValidationNoticeSigByField = new Map();
+const fontAutoMatchNoticeSigByField = new Map();
+const invalidConfiguredFontFamilies = new Set();
+
+function notifyFontUnavailable(fieldLabel, family, reason) {
+    const label = String(fieldLabel || '字体设置');
+    const resolvedFamily = String(family || '').trim() || '（未命名）';
+    const resolvedReason = String(reason || '').trim() || '未知原因';
+    const sig = `${resolvedFamily}::${resolvedReason}`;
+    if (fontValidationNoticeSigByField.get(label) === sig) return;
+    fontValidationNoticeSigByField.set(label, sig);
+    notify('error', `[${label}] 字体“${resolvedFamily}”不可用：${resolvedReason}`);
+}
+
+function notifyFontAutoMatched(fieldLabel, fromFamily, toFamily) {
+    const label = String(fieldLabel || '字体设置');
+    const from = String(fromFamily || '').trim() || '（未命名）';
+    const to = String(toFamily || '').trim() || '（未命名）';
+    const sig = `${from}->${to}`;
+    if (fontAutoMatchNoticeSigByField.get(label) === sig) return;
+    fontAutoMatchNoticeSigByField.set(label, sig);
+    notify('warning', `[${label}] 字体“${from}”不可用，已自动匹配为“${to}”。`);
+}
+
+function clearFontUnavailableNotice(fieldLabel) {
+    const label = String(fieldLabel || '字体设置');
+    fontValidationNoticeSigByField.delete(label);
+    fontAutoMatchNoticeSigByField.delete(label);
+}
+
+async function resolveValidatedFontCss(rawValue, fieldLabel) {
+    const families = parseFontFamilyList(rawValue);
+    if (!families.length) {
+        clearFontUnavailableNotice(fieldLabel);
+        return { css: '', families: [] };
+    }
+
+    const primary = families[0];
+    const availability = await ensureFontFamilyUsable(primary);
+    if (!availability.ok) {
+        const guessed = await guessUsableFamilyByAlias(primary);
+        if (guessed?.ok && guessed.family) {
+            const replacedFamilies = [guessed.family, ...families.slice(1)];
+            invalidConfiguredFontFamilies.delete(primary);
+            invalidConfiguredFontFamilies.delete(guessed.family);
+            clearFontUnavailableNotice(fieldLabel);
+            notifyFontAutoMatched(fieldLabel, primary, guessed.family);
+            return {
+                css: toCssFontFamilyValue(replacedFamilies.join(', ')),
+                families: replacedFamilies.filter((family) => !invalidConfiguredFontFamilies.has(family)),
+            };
+        }
+
+        invalidConfiguredFontFamilies.add(primary);
+        const importedReason = getFontIssueReasonForFamily(primary);
+        const guessedReason = guessed?.reason || '';
+        const reason = importedReason || availability.reason || guessedReason || '未知错误';
+        notifyFontUnavailable(fieldLabel, primary, reason);
+        return { css: '', families: [] };
+    }
+
+    invalidConfiguredFontFamilies.delete(primary);
+
+    clearFontUnavailableNotice(fieldLabel);
+    return {
+        css: toCssFontFamilyValue(rawValue),
+        families: families.filter((family) => !invalidConfiguredFontFamilies.has(family)),
+    };
+}
+
+async function buildValidatedLocaleFontMap() {
+    const map = new Map();
+    if (!settings.fontsEnabled) return map;
+    if (!settings.localeFontEnabled) return map;
+    if (!Array.isArray(settings.localeFonts)) return map;
+
+    for (const rule of settings.localeFonts) {
+        const key = String(rule?.rangeKey || '').trim();
+        if (!key || !UNICODE_RANGES[key]) continue;
+
+        const rawFontValue = String(rule?.font || '').trim();
+        if (!rawFontValue) continue;
+
+        const label = `多语言字体（${UNICODE_RANGES[key]?.label || key}）`;
+        const resolved = await resolveValidatedFontCss(rawFontValue, label);
+        if (!resolved.css) continue;
+
+        map.set(key, resolved.css);
+    }
+
+    return map;
+}
+
+// The settings preview lives outside #chat. Use the same validated families and
+// generated stylesheet so font loading, preset changes and disabling stay in sync.
+function buildReadingPreviewFontCss(globalFontCss, bodyFontCss, dialogueFontCss) {
+    const body = bodyFontCss || globalFontCss;
+    const dialogue = dialogueFontCss || body;
+    let css = '';
+    if (body) {
+        css += '\n#nytw_reading_preview .nytw-reading-preview-body,'
+            + '#nytw_reading_preview .nytw-reading-preview-italic'
+            + '{font-family:' + body + ' !important;}';
+    }
+    if (dialogue) {
+        css += '\n#nytw_reading_preview .nytw-reading-preview-dialogue'
+            + '{font-family:' + dialogue + ' !important;}';
+    }
+    return css;
+}
+
+async function applyFontSettings() {
+    const styleEl = ensureFontStyleElement();
+    if (!settings.fontsEnabled) {
+        styleEl.textContent = '';
+        revokeAllFontObjectUrls();
+        syncExternalFontStylesheets([]);
+        fontValidationNoticeSigByField.clear();
+        fontAutoMatchNoticeSigByField.clear();
+        invalidConfiguredFontFamilies.clear();
+        applyTypographyVariables();
+        syncTextAnimationTargets();
+        return;
+    }
+
+    invalidConfiguredFontFamilies.clear();
+
+    const resolvedGlobal = await resolveValidatedFontCss(settings.globalFont, '全局字体');
+    const resolvedBody = await resolveValidatedFontCss(settings.bodyFont, '正文字体');
+    const resolvedDialogue = await resolveValidatedFontCss(settings.dialogueFont, '对话字体');
+    const resolvedCustom = await resolveValidatedFontCss(settings.customFont, '自定义包裹字体');
+    const localeFontMap = await buildValidatedLocaleFontMap();
+
+    const globalFontCss = resolvedGlobal.css;
+    const bodyFontCss = resolvedBody.css;
+    const dialogueFontCss = resolvedDialogue.css;
+    const customFontCss = resolvedCustom.css;
+
+    // Collect all families including locale overrides
+    const localeFontNames = [];
+    for (const font of localeFontMap.values()) {
+        localeFontNames.push(...parseFontFamilyList(font));
+    }
+
+    const families = [
+        ...resolvedGlobal.families,
+        ...resolvedBody.families,
+        ...resolvedDialogue.families,
+        ...resolvedCustom.families,
+        ...localeFontNames,
+    ];
+
+    const externalCssUrls = collectExternalFontCssUrlsForFamilies(families);
+    syncExternalFontStylesheets(externalCssUrls);
+    try {
+        await ensureExternalFontStylesheetsReady(externalCssUrls);
+    } catch (error) {
+        console.warn('[NyTW] Failed while waiting external font stylesheets', error);
+    }
+
+    let css = '/* NyTW Fonts (generated) */\n';
+    try {
+        css += await buildFontFaceCssForFamilies(families);
+    } catch (error) {
+        console.error('[NyTW] Failed to prepare imported file fonts', error);
+    }
+
+    if (globalFontCss) {
+        css += '\n/* Global Font Override */\n';
+        css += `\nbody{font-family:${globalFontCss} !important;}`;
+        css += `\n#sillytavern{font-family:${globalFontCss} !important;}`;
+        css += `\ninput,textarea,select,button{font-family:${globalFontCss} !important;}`;
+        // 酒馆给弹层加 .font-family-reset（强制回到主题主字体），需要单独覆盖
+        css += [
+            '\n#options,#options .options-content,#options a,#options span,',
+            '.font-family-reset,.font-family-reset a,.font-family-reset div,',
+            '.font-family-reset span,.font-family-reset label,.font-family-reset p,',
+            '.font-family-reset li,.font-family-reset input,',
+            '.font-family-reset select,.font-family-reset textarea',
+            `{font-family:${globalFontCss} !important;}`,
+        ].join('');
+        // Ensure chat message body also follows the global font when bodyFont is not set.
+        css += `\n#chat .mes_text{font-family:${globalFontCss} !important;}`;
+    }
+
+    if (bodyFontCss) {
+        css += `\n#chat .mes_text{font-family:${bodyFontCss} !important;}`;
+    }
+
+    if (localeFontMap.size) {
+        css += '\n/* Locale Font Overrides */\n';
+        for (const [key, fontCss] of localeFontMap.entries()) {
+            css += `#chat .mes_text [${LOCALE_FONT_ATTR}=${cssQuote(key)}]{font-family:${fontCss};}\n`;
+        }
+    }
+
+    if (dialogueFontCss) {
+        css += [
+            '\n#chat .mes_text .Ny-font-manager,',
+            '#chat .mes_text .custom-Ny-font-manager,',
+            '#chat .mes_text .ny-dialogue,',
+            '#chat .mes_text .custom-ny-dialogue',
+            `{font-family:${dialogueFontCss} !important;}`,
+        ].join('');
+    }
+
+    if (customFontCss) {
+        const customClass = CUSTOM_INDEPENDENT_FONT_CLASS;
+        const customScopedClass = `custom-${CUSTOM_INDEPENDENT_FONT_CLASS}`;
+        css += [
+            `\n#chat .mes_text .${customClass},`,
+            `#chat .mes_text .${customScopedClass}`,
+            `{font-family:${customFontCss} !important;}`,
+        ].join('');
+    }
+
+    css += buildReadingPreviewFontCss(globalFontCss, bodyFontCss, dialogueFontCss);
+
+    css += '\n/* Scoped typography overrides for locale/custom font ranges */\n';
+    css += `\n#chat .mes_text [${LOCALE_FONT_ATTR}]{font-size:var(--nytw-locale-font-size) !important;letter-spacing:var(--nytw-locale-letter-spacing) !important;}`;
+    css += `\n#chat .mes_text .${CUSTOM_INDEPENDENT_FONT_CLASS},#chat .mes_text .custom-${CUSTOM_INDEPENDENT_FONT_CLASS}{font-size:var(--nytw-custom-font-size) !important;letter-spacing:var(--nytw-custom-letter-spacing) !important;}`;
+
+    css += [
+        '\n/* Streaming: disable NyTW animations to avoid flicker while SillyTavern re-renders .mes_text */',
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS} .mes_text{white-space:normal !important;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS} .ny-tw-char,`,
+        `#chat .mes.${STREAMING_MESSAGE_CLASS} .custom-ny-tw-char`,
+        '{animation:none !important;opacity:1 !important;}',
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS} [class*="ny-dialogue-inner-"],`,
+        `#chat .mes.${STREAMING_MESSAGE_CLASS} [class*="ny-custom-inner-"]`,
+        '{animation:none !important;filter:none !important;opacity:1 !important;transform:none !important;}',
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS} [class*="ny-dialogue-"],`,
+        `#chat .mes.${STREAMING_MESSAGE_CLASS} [class*="ny-custom-"]`,
+        '{animation:none !important;}',
+        '\n/* Streaming render mode: buffered live view */',
+        `\n#chat .mes_text.${STREAM_BUFFER_CLASS}{display:none !important;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"] .mes_text:not(.${STREAM_BUFFER_CLASS}){display:none !important;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"] .mes_text.${STREAM_BUFFER_CLASS}{display:block !important;height:auto !important;min-height:0 !important;white-space:normal !important;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"] .mes_text.${STREAM_BUFFER_CLASS} p{margin-top:var(--nytw-stream-p-mt,0);margin-bottom:var(--nytw-stream-p-mb,10px);}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"] .mes_text.${STREAM_BUFFER_CLASS} p:last-child{margin-bottom:var(--nytw-stream-p-mb-last,0);}`,
+        '\n/* Streaming animations (NyTW) */',
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_ANIM_ATTR}] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_SEG_CLASS}{display:inline-block;vertical-align:baseline;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_ANIM_ATTR}] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_SEG_CLASS}[${STREAM_SEG_BR_ATTR}="1"]{display:inline !important;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_ANIM_ATTR}] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_SEG_CLASS}[${STREAM_SEG_WS_ATTR}="1"]{display:inline !important;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_ANIM_ATTR}="typewriter"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_SEG_CLASS}[${STREAM_SEG_NEW_ATTR}]{opacity:0;animation:nytw-stream-tw-in 160ms cubic-bezier(.18,.89,.32,1.05) both;animation-delay:calc(var(--nytw-stream-i, 0) * var(${STREAM_STEP_VAR}, 20ms));}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_ANIM_ATTR}="blur"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_SEG_CLASS}[${STREAM_SEG_NEW_ATTR}]{opacity:0;filter:blur(10px);animation:nytw-stream-blur-in 320ms cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--nytw-stream-i, 0) * 12ms);}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_ANIM_ATTR}="glow"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_SEG_CLASS}[${STREAM_SEG_NEW_ATTR}]{opacity:0;text-shadow:0 0 0 rgba(120,180,255,.0);animation:nytw-stream-glow-in 420ms cubic-bezier(.18,.89,.32,1.05) both;animation-delay:calc(var(--nytw-stream-i, 0) * 10ms);}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}{display:inline-block;position:relative;width:0;height:1em;vertical-align:-0.1em;pointer-events:none;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}::after{content:"";position:absolute;left:0;top:0.1em;bottom:0.1em;width:2px;background:currentColor;border-radius:1px;opacity:.9;transform-origin:center;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_SHAPE_ATTR}="bar"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}{width:0;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_SHAPE_ATTR}="bar"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}::after{left:0;top:0.1em;bottom:0.1em;width:2px;height:auto;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_SHAPE_ATTR}="thin"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}{width:0;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_SHAPE_ATTR}="thin"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}::after{left:0;top:0.1em;bottom:0.1em;width:1px;height:auto;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_SHAPE_ATTR}="block"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}{width:0;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_SHAPE_ATTR}="block"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}::after{left:0;top:0.08em;bottom:0.08em;width:.62em;height:auto;border-radius:2px;opacity:.55;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_SHAPE_ATTR}="hollow"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}{width:0;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_SHAPE_ATTR}="hollow"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}::after{left:0;top:0.08em;bottom:0.08em;width:.62em;height:auto;background:transparent;border:2px solid currentColor;border-radius:2px;opacity:.8;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_SHAPE_ATTR}="underscore"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}{width:0;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_SHAPE_ATTR}="underscore"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}::after{left:0;top:auto;bottom:0.1em;width:.62em;height:2px;border-radius:1px;opacity:.9;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_SHAPE_ATTR}="image"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}{width:0;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_SHAPE_ATTR}="image"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}::after{left:0;top:0;bottom:auto;width:1em;height:1em;background:transparent;background-image:var(${STREAM_CURSOR_IMAGE_VAR},none);background-position:center;background-repeat:no-repeat;background-size:contain;border:none;border-radius:0;opacity:1;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_ANIM_ATTR}="blink"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}::after{animation:nytw-stream-caret-blink 1s steps(1,end) infinite;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_ANIM_ATTR}="smooth"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}::after{animation:nytw-stream-caret-smooth 1.5s ease-in-out infinite;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_ANIM_ATTR}="pulse"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}::after{animation:nytw-stream-caret-pulse 1.2s ease-in-out infinite;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_ANIM_ATTR}="elastic"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}::after{animation:nytw-stream-caret-elastic 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_ANIM_ATTR}="glitch"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}::after{animation:nytw-stream-caret-glitch 2s steps(1) infinite;}`,
+        `\n#chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"][${STREAM_CURSOR_ANIM_ATTR}="solid"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}::after{animation:none;opacity:.9;}`,
+        '\n@keyframes nytw-stream-tw-in{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;}}',
+        '\n@keyframes nytw-stream-blur-in{0%{opacity:0;filter:blur(10px);}100%{opacity:1;filter:blur(0);}}',
+        '\n@keyframes nytw-stream-glow-in{0%{opacity:0;transform:translateY(3px);text-shadow:0 0 0 rgba(120,180,255,.0);}55%{opacity:1;text-shadow:0 0 12px rgba(120,180,255,.55);}100%{opacity:1;transform:none;text-shadow:0 0 0 rgba(120,180,255,.0);}}',
+        '\n@keyframes nytw-stream-caret-blink{0%,49%{opacity:1;}50%,100%{opacity:0;}}',
+        '\n@keyframes nytw-stream-caret-smooth{0%,100%{opacity:0;}50%{opacity:1;}}',
+        '\n@keyframes nytw-stream-caret-pulse{0%,100%{opacity:.35;}50%{opacity:1;}}',
+        '\n@keyframes nytw-stream-caret-elastic{0%,100%{transform:scaleY(1);opacity:.9;}50%{transform:scaleY(.6);opacity:.5;}}',
+        '\n@keyframes nytw-stream-caret-glitch{0%{opacity:1;transform:translate(0,0);}5%{opacity:0;transform:translate(-2px,2px);}10%{opacity:1;transform:translate(2px,-2px);}15%{opacity:0;}20%{opacity:1;transform:translate(0,0);}40%{opacity:1;}42%{opacity:.5;transform:skewX(20deg);}44%{opacity:1;transform:skewX(0);}80%{opacity:1;}82%{opacity:0;}84%{opacity:1;}100%{opacity:1;}}',
+        '\n@media (prefers-reduced-motion: reduce){',
+        `\n  #chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_ANIM_ATTR}] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_SEG_CLASS}[${STREAM_SEG_NEW_ATTR}]{animation:none !important;opacity:1 !important;filter:none !important;transform:none !important;text-shadow:none !important;}`,
+        `\n  #chat .mes.${STREAMING_MESSAGE_CLASS}[${STREAM_RENDER_ATTR}="buffer"][${STREAM_CURSOR_ATTR}="1"] .mes_text.${STREAM_BUFFER_CLASS} .${STREAM_CURSOR_CLASS}::after{animation:none !important;opacity:.85 !important;}`,
+        '\n}',
+        '\n',
+    ].join('');
+
+    styleEl.textContent = css;
+    applyTypographyVariables();
+    syncTextAnimationTargets();
+}
+
+function stripStreamingBufferWhitespace(rootEl) {
+    if (!rootEl || !(rootEl instanceof HTMLElement)) return;
+    const childNodes = Array.from(rootEl.childNodes);
+    for (const node of childNodes) {
+        if (node.nodeType !== Node.TEXT_NODE) continue;
+        const raw = node.nodeValue || '';
+        if (!/[\r\n]/.test(raw)) continue;
+        if (!/^[\s\u200B\u200C\u200D\uFEFF]*$/.test(raw)) continue;
+        node.parentNode?.removeChild(node);
+    }
+}
+
+function safeDecodeURIComponent(value) {
+    try {
+        return decodeURIComponent(String(value ?? ''));
+    } catch {
+        return String(value ?? '');
+    }
+}
+
+function buildScopedClassNames(...classNames) {
+    const resolved = [];
+    for (const className of classNames) {
+        const base = String(className || '').trim();
+        if (!base) continue;
+        resolved.push(base);
+        if (!base.startsWith('custom-')) {
+            resolved.push(`custom-${base}`);
+        }
+    }
+    return resolved.join(' ');
+}
+
+function applyQuoteWrapping(rootEl) {
+    if (!rootEl) return;
+
+    const quotePairs = [
+        ['"', '"'],
+        ['\u201C', '\u201D'], // “ ”
+        ['\u2018', '\u2019'], // ‘ ’
+        ['\u00AB', '\u00BB'], // « »
+        ['\u300C', '\u300D'], // 「 」
+        ['\uFF02', '\uFF02'], // ＂ ＂
+        ['\uFF07', '\uFF07'], // ＇ ＇
+        ['\'', '\''],
+    ];
+
+    const isAsciiWordChar = (ch) => /[0-9A-Za-z]/.test(String(ch || ''));
+    const isApostropheLike = (token) => token === '\'' || token === '\u2019' || token === '\uFF07';
+    const isApostropheInWord = (text, tokenIdx, token) => {
+        const prev = tokenIdx > 0 ? text[tokenIdx - 1] : '';
+        const nextIdx = tokenIdx + token.length;
+        const next = nextIdx < text.length ? text[nextIdx] : '';
+        return isAsciiWordChar(prev) && isAsciiWordChar(next);
+    };
+
+    const findNextValidToken = (text, token, fromIdx) => {
+        let candidate = text.indexOf(token, fromIdx);
+        if (!isApostropheLike(token)) return candidate;
+        while (candidate !== -1 && isApostropheInWord(text, candidate, token)) {
+            candidate = text.indexOf(token, candidate + token.length);
+        }
+        return candidate;
+    };
+
+    const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+            if (!node || !node.nodeValue) return NodeFilter.FILTER_REJECT;
+            if (isLikelyNytwMarkdownTableSource(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+            const text = node.nodeValue;
+            if (!quotePairs.some(([open]) => text.includes(open))) return NodeFilter.FILTER_REJECT;
+
+            const parent = node.parentElement;
+            if (!parent) return NodeFilter.FILTER_REJECT;
+            if (isWithinNytwProtectedContent(parent)) return NodeFilter.FILTER_REJECT;
+            if (parent.closest('q')) return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+        },
+    });
+
+    const textNodes = [];
+    let n = walker.nextNode();
+    while (n) {
+        textNodes.push(/** @type {Text} */ (n));
+        n = walker.nextNode();
+    }
+
+    for (const textNode of textNodes) {
+        const text = textNode.nodeValue || '';
+        if (!quotePairs.some(([open]) => text.includes(open))) continue;
+
+        const frag = document.createDocumentFragment();
+        let idx = 0;
+        let changed = false;
+
+        while (idx < text.length) {
+            let openIdx = -1;
+            let openToken = '';
+            let closeToken = '';
+            for (const [open, close] of quotePairs) {
+                const candidateIdx = findNextValidToken(text, open, idx);
+                if (candidateIdx === -1) continue;
+                if (openIdx === -1 || candidateIdx < openIdx) {
+                    openIdx = candidateIdx;
+                    openToken = open;
+                    closeToken = close;
+                }
+            }
+
+            if (openIdx === -1) break;
+
+            if (openIdx > idx) {
+                frag.appendChild(document.createTextNode(text.slice(idx, openIdx)));
+            }
+
+            const openEnd = openIdx + openToken.length;
+            const closeIdx = findNextValidToken(text, closeToken, openEnd);
+            if (closeIdx === -1) {
+                frag.appendChild(document.createTextNode(openToken));
+                idx = openEnd;
+                continue;
+            }
+
+            const q = document.createElement('q');
+            // Preserve the original quote characters inside <q> (SillyTavern disables q::before/q::after).
+            q.textContent = `${openToken}${text.slice(openEnd, closeIdx)}${closeToken}`;
+            frag.appendChild(q);
+            changed = true;
+
+            idx = closeIdx + closeToken.length;
+        }
+
+        if (!changed) continue;
+        if (idx < text.length) {
+            frag.appendChild(document.createTextNode(text.slice(idx)));
+        }
+
+        textNode.parentNode?.replaceChild(frag, textNode);
+    }
+}
+
+function getDialogueFontContainerSignature(containerEl) {
+    const textLen = (containerEl?.textContent || '').length;
+    const qCount = containerEl?.querySelectorAll ? containerEl.querySelectorAll('q').length : 0;
+    const markedQCount = containerEl?.querySelectorAll
+        ? containerEl.querySelectorAll('q.ny-dialogue, q.custom-ny-dialogue').length
+        : 0;
+    return `${textLen}:${qCount}:${markedQCount}`;
+}
+
+function shouldProcessDialogueMarkup() {
+    if (!settings.fontsEnabled) return false;
+    if (String(settings.dialogueFont || '').trim()) return true;
+    if (settings.textAnimEnabled !== true) return false;
+
+    const globalEffect = normalizeTextAnimEffect(settings.textAnimGlobalEffect);
+    const bodyEffect = settings.textAnimBodyOverride === true
+        ? normalizeTextAnimEffect(settings.textAnimBodyEffect)
+        : globalEffect;
+    const dialogueEffect = settings.textAnimDialogueOverride === true
+        ? normalizeTextAnimEffect(settings.textAnimDialogueEffect)
+        : globalEffect;
+
+    return bodyEffect !== 'none' || dialogueEffect !== 'none';
+}
+
+function applyDialogueFontToQuotes(containerEl) {
+    if (!containerEl || !(containerEl instanceof HTMLElement)) return;
+    if (!shouldProcessDialogueMarkup()) return;
+
+    const prevSig = dialogueFontProcessSig.get(containerEl);
+    const sig = getDialogueFontContainerSignature(containerEl);
+    if (prevSig === sig) return;
+
+    const rawText = containerEl.textContent || '';
+    const hasPotentialDialogueQuotes = rawText && DIALOGUE_QUOTE_PAIRS.some(([open]) => rawText.includes(open));
+    const hasQ = Boolean(containerEl.querySelector('q'));
+    if (!hasPotentialDialogueQuotes && !hasQ) {
+        dialogueFontProcessSig.set(containerEl, sig);
+        return;
+    }
+
+    applyQuoteWrapping(containerEl);
+
+    const qEls = Array.from(containerEl.querySelectorAll('q'));
+    for (const q of qEls) {
+        if (!(q instanceof HTMLElement)) continue;
+        if (isWithinNytwProtectedContent(q)) continue;
+
+        if (q.closest('.ny-custom, .custom-ny-custom')) {
+            q.classList.remove('ny-dialogue', 'custom-ny-dialogue');
+            continue;
+        }
+
+        // Already wrapped/marked by bundle scripts.
+        if (q.closest('.ny-dialogue, .custom-ny-dialogue')) continue;
+
+        const qText = (q.textContent || '').trim();
+        const isDialogueQ = DIALOGUE_QUOTE_PAIRS.some(([open, close]) => (
+            qText.startsWith(open)
+            && qText.endsWith(close)
+            && qText.length >= (open.length + close.length)
+        ));
+        if (!isDialogueQ) continue;
+
+        q.classList.add('ny-dialogue', 'custom-ny-dialogue');
+        q.removeAttribute('data-ny-q-plain');
+    }
+
+    dialogueFontProcessSig.set(containerEl, getDialogueFontContainerSignature(containerEl));
+}
+
+function getActiveLocaleFontMap() {
+    const map = new Map();
+    if (!settings.fontsEnabled) return map;
+    if (!settings.localeFontEnabled) return map;
+    if (!Array.isArray(settings.localeFonts)) return map;
+
+    for (const rule of settings.localeFonts) {
+        const key = String(rule?.rangeKey || '').trim();
+        if (!key || !UNICODE_RANGES[key]) continue;
+        const families = parseFontFamilyList(rule?.font);
+        const primary = families[0] || '';
+        if (primary && invalidConfiguredFontFamilies.has(primary)) continue;
+
+        const fontCss = toCssFontFamilyValue(rule?.font);
+        if (!fontCss) continue;
+        map.set(key, fontCss);
+    }
+
+    return map;
+}
+
+function unwrapLocaleWrapper(el) {
+    const parent = el?.parentNode;
+    if (!parent) return;
+    const frag = document.createDocumentFragment();
+    while (el.firstChild) frag.appendChild(el.firstChild);
+    parent.replaceChild(frag, el);
+}
+
+function clearLocaleFontProcessing(containerEl) {
+    if (!containerEl || !(containerEl instanceof HTMLElement)) return;
+
+    // Unwrap our own wrappers first.
+    const wrappers = Array.from(containerEl.querySelectorAll(`[${LOCALE_WRAP_ATTR}]`));
+    for (const el of wrappers) {
+        if (!(el instanceof HTMLElement)) continue;
+        unwrapLocaleWrapper(el);
+    }
+
+    // Clear marks on existing elements (e.g. .ny-tw-char spans).
+    const marked = Array.from(containerEl.querySelectorAll(`[${LOCALE_FONT_ATTR}]`));
+    for (const el of marked) {
+        if (!(el instanceof HTMLElement)) continue;
+        el.removeAttribute(LOCALE_FONT_ATTR);
+    }
+}
+
+function getLocaleFontContainerSignature(containerEl, rulesSig) {
+    const textLen = (containerEl?.textContent || '').length;
+    const hasWrap = containerEl?.querySelector ? (containerEl.querySelector(`[${LOCALE_WRAP_ATTR}]`) ? 1 : 0) : 0;
+    const hasMark = containerEl?.querySelector ? (containerEl.querySelector(`[${LOCALE_FONT_ATTR}]`) ? 1 : 0) : 0;
+    const sig = String(rulesSig || '');
+    return `${sig}:${textLen}:${hasWrap}:${hasMark}`;
+}
+
+function codePointInRanges(codePoint, ranges) {
+    if (!Number.isFinite(codePoint) || !ranges?.length) return false;
+    for (const [start, end] of ranges) {
+        if (codePoint >= start && codePoint <= end) return true;
+    }
+    return false;
+}
+
+function isCombiningOrVariationCodePoint(codePoint) {
+    // Combining Diacritical Marks + a few common variation/ZWJ ranges.
+    return (
+        (codePoint >= 0x0300 && codePoint <= 0x036F)
+        || (codePoint >= 0x1AB0 && codePoint <= 0x1AFF)
+        || (codePoint >= 0x1DC0 && codePoint <= 0x1DFF)
+        || (codePoint >= 0x20D0 && codePoint <= 0x20FF)
+        || (codePoint >= 0xFE20 && codePoint <= 0xFE2F)
+        || (codePoint >= 0xFE00 && codePoint <= 0xFE0F) // Variation Selectors
+        || (codePoint >= 0xE0100 && codePoint <= 0xE01EF) // Variation Selectors Supplement
+        || codePoint === 0x200D // ZWJ
+    );
+}
+
+function getFirstSignificantCodePoint(grapheme) {
+    const raw = String(grapheme || '');
+    if (!raw) return null;
+
+    for (const ch of Array.from(raw)) {
+        const cp = ch.codePointAt(0);
+        if (!Number.isFinite(cp)) continue;
+        if (isCombiningOrVariationCodePoint(cp)) continue;
+        return cp;
+    }
+
+    return null;
+}
+
+function iterateTextSegmentsWithIndices(text, onSegment) {
+    const raw = String(text || '');
+    if (!raw) return;
+
+    if (graphemeSegmenter) {
+        for (const part of graphemeSegmenter.segment(raw)) {
+            onSegment(part.segment, part.index, part.index + part.segment.length);
+        }
+        return;
+    }
+
+    // Fallback: code point iteration (keeps surrogate pairs intact).
+    let idx = 0;
+    for (const segment of Array.from(raw)) {
+        const start = idx;
+        idx += segment.length;
+        onSegment(segment, start, idx);
+    }
+}
+
+function getLocaleKeyForSegment(segment, activeKeys, prevKey) {
+    const text = String(segment || '');
+    if (!text) return prevKey || '';
+
+    // Whitespace-only segments should follow the previous key to avoid fragmentation.
+    if (!text.trim().length) return prevKey || '';
+
+    const cp = getFirstSignificantCodePoint(text);
+    if (cp === null) return prevKey || '';
+
+    // Digits / punctuation / emoji are treated as "neutral" unless explicitly configured,
+    // in which case they can be split and assigned their own font.
+    if (codePointInRanges(cp, UNICODE_RANGES.digits?.ranges)) {
+        return activeKeys.has('digits') ? 'digits' : (prevKey || '');
+    }
+    if (codePointInRanges(cp, UNICODE_RANGES.punctuation?.ranges)) {
+        return activeKeys.has('punctuation') ? 'punctuation' : (prevKey || '');
+    }
+    if (codePointInRanges(cp, UNICODE_RANGES.emoji?.ranges)) {
+        return activeKeys.has('emoji') ? 'emoji' : (prevKey || '');
+    }
+
+    for (const key of LOCALE_KEY_PRIORITY) {
+        if (!activeKeys.has(key)) continue;
+        const def = UNICODE_RANGES[key];
+        if (!def?.ranges) continue;
+        if (codePointInRanges(cp, def.ranges)) return key;
+    }
+
+    return '';
+}
+
+function buildLocaleWrapSegments(text, activeKeys, initialPrevKey) {
+    const raw = String(text || '');
+    if (!raw) return { segments: [], lastKey: initialPrevKey || '' };
+
+    /** @type {Array<[number, number, string]>} */
+    const segments = [];
+
+    let prevKey = initialPrevKey || '';
+    let runKey = null;
+    let runStart = 0;
+
+    iterateTextSegmentsWithIndices(raw, (seg, start) => {
+        const key = getLocaleKeyForSegment(seg, activeKeys, prevKey);
+
+        if (runKey === null) {
+            runKey = key;
+            runStart = start;
+        } else if (key !== runKey) {
+            if (runKey) segments.push([runStart, start, runKey]);
+            runKey = key;
+            runStart = start;
+        }
+
+        prevKey = key;
+    });
+
+    if (runKey && runStart < raw.length) {
+        segments.push([runStart, raw.length, runKey]);
+    }
+
+    return { segments, lastKey: prevKey };
+}
+
+function wrapTextNodeRangeWithLocale(textNode, startOffset, endOffset, key) {
+    if (!textNode?.parentNode) return;
+    const value = textNode.nodeValue || '';
+    if (!value) return;
+
+    const start = Math.max(0, Math.min(value.length, startOffset));
+    const end = Math.max(0, Math.min(value.length, endOffset));
+    if (end <= start) return;
+
+    /** @type {Text} */
+    let middle = textNode;
+    if (start > 0) middle = middle.splitText(start);
+
+    const middleValue = middle.nodeValue || '';
+    const middleLen = middleValue.length;
+    const desiredLen = Math.min(middleLen, end - start);
+    if (desiredLen < middleLen) middle.splitText(desiredLen);
+
+    const wrapper = document.createElement('span');
+    wrapper.setAttribute(LOCALE_WRAP_ATTR, '1');
+    wrapper.setAttribute(LOCALE_FONT_ATTR, key);
+    middle.parentNode.replaceChild(wrapper, middle);
+    wrapper.appendChild(middle);
+}
+
+function collectEligibleLocaleTextNodes(containerEl) {
+    if (!containerEl || !(containerEl instanceof HTMLElement)) return [];
+
+    const walker = document.createTreeWalker(containerEl, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+            if (!node || !node.nodeValue) return NodeFilter.FILTER_REJECT;
+            if (isLikelyNytwMarkdownTableSource(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+            const parent = node.parentElement;
+            if (!parent) return NodeFilter.FILTER_REJECT;
+            if (isWithinNytwProtectedContent(parent)) return NodeFilter.FILTER_REJECT;
+            if (parent.closest(`.${CUSTOM_INDEPENDENT_FONT_CLASS}, .custom-${CUSTOM_INDEPENDENT_FONT_CLASS}`)) return NodeFilter.FILTER_REJECT;
+            if (parent.closest(`[${CUSTOM_INDEPENDENT_FONT_MARK_ATTR}]`)) return NodeFilter.FILTER_REJECT;
+            if (parent.closest(`.${CHAR_CLASS.split(' ')[0]}`)) return NodeFilter.FILTER_REJECT;
+            if (parent.closest(`[${LOCALE_WRAP_ATTR}]`)) return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+        },
+    });
+
+    const nodes = [];
+    let n = walker.nextNode();
+    while (n) {
+        nodes.push(/** @type {Text} */ (n));
+        n = walker.nextNode();
+        if (nodes.length >= 20000) break;
+    }
+    return nodes;
+}
+
+function applyLocaleFontsToTextNodes(containerEl, activeKeys) {
+    const textNodes = collectEligibleLocaleTextNodes(containerEl);
+    if (!textNodes.length) return;
+
+    let carryKey = '';
+    let totalWraps = 0;
+
+    for (const node of textNodes) {
+        const text = node.nodeValue || '';
+        if (!text) continue;
+
+        const { segments, lastKey } = buildLocaleWrapSegments(text, activeKeys, carryKey);
+        carryKey = lastKey;
+        if (!segments.length) continue;
+
+        // Process from the end so splitText offsets remain valid.
+        const sorted = segments
+            .map(([s, e, k]) => [Number(s) || 0, Number(e) || 0, String(k || '')])
+            .filter(([s, e, k]) => k && e > s)
+            .sort((a, b) => (b[0] - a[0]) || (b[1] - a[1]));
+
+        for (const [start, end, key] of sorted) {
+            if (totalWraps >= 12000) return;
+            wrapTextNodeRangeWithLocale(node, start, end, key);
+            totalWraps += 1;
+        }
+    }
+}
+
+function applyLocaleFontsToTypewriterChars(containerEl, activeKeys) {
+    if (!containerEl) return;
+    const chars = Array.from(containerEl.querySelectorAll('.ny-tw-char, .custom-ny-tw-char'));
+    let prevKey = '';
+
+    for (const el of chars) {
+        if (!(el instanceof HTMLElement)) continue;
+
+        if (isWithinNytwProtectedContent(el)) {
+            el.removeAttribute(LOCALE_FONT_ATTR);
+            continue;
+        }
+
+        // Custom independent font always wins.
+        if (el.closest(`[${CUSTOM_INDEPENDENT_FONT_MARK_ATTR}]`)) {
+            el.removeAttribute(LOCALE_FONT_ATTR);
+            continue;
+        }
+        if (el.closest(`.${CUSTOM_INDEPENDENT_FONT_CLASS}, .custom-${CUSTOM_INDEPENDENT_FONT_CLASS}`)) {
+            el.removeAttribute(LOCALE_FONT_ATTR);
+            continue;
+        }
+
+        const key = getLocaleKeyForSegment(el.textContent || '', activeKeys, prevKey);
+        if (key) {
+            el.setAttribute(LOCALE_FONT_ATTR, key);
+        } else {
+            el.removeAttribute(LOCALE_FONT_ATTR);
+        }
+        prevKey = key;
+    }
+}
+
+function applyLocaleFonts(containerEl) {
+    if (!containerEl || !(containerEl instanceof HTMLElement)) return;
+
+    const localeFontMap = getActiveLocaleFontMap();
+    const activeKeys = new Set(localeFontMap.keys());
+    const active = settings.fontsEnabled && settings.localeFontEnabled && activeKeys.size > 0;
+
+    if (!active) {
+        clearLocaleFontProcessing(containerEl);
+        localeFontProcessSig.delete(containerEl);
+        return;
+    }
+
+    const rulesSig = Array.from(localeFontMap.entries())
+        .map(([k, v]) => `${k}:${v}`)
+        .join('|');
+
+    const sig = getLocaleFontContainerSignature(containerEl, rulesSig);
+    const prevSig = localeFontProcessSig.get(containerEl);
+    if (prevSig === sig) return;
+
+    clearLocaleFontProcessing(containerEl);
+
+    applyLocaleFontsToTextNodes(containerEl, activeKeys);
+    applyLocaleFontsToTypewriterChars(containerEl, activeKeys);
+
+    localeFontProcessSig.set(containerEl, getLocaleFontContainerSignature(containerEl, rulesSig));
+}
+
+function splitGraphemes(text) {
+    if (!text) return [];
+    if (graphemeSegmenter) {
+        return Array.from(graphemeSegmenter.segment(text), part => part.segment);
+    }
+    return Array.from(text);
+}
+
+function segmentText(text, granularity) {
+    const raw = String(text ?? '');
+    if (!raw) return [];
+
+    const resolved = String(granularity || 'word');
+    if (resolved === 'grapheme') {
+        return splitGraphemes(raw);
+    }
+
+    const segmenter = getStreamAnimSegmenter(resolved);
+    if (!segmenter) return [raw];
+    return Array.from(segmenter.segment(raw), part => part.segment);
+}
+
+function segmentTextForStreamingAnimation(rootEl, { granularity = 'word', baseIndex = 0 } = {}) {
+    if (!rootEl || !(rootEl instanceof HTMLElement)) return { totalIndex: 0 };
+
+    let globalIndex = 0;
+    const resolvedGranularity = String(granularity || 'word');
+    const segmentLineBreaks = resolvedGranularity === 'grapheme';
+    const splitSegmentParts = (segment) => {
+        const raw = String(segment ?? '');
+        if (!raw) return [];
+        // Keep whitespace as its own segment so it can render as normal inline whitespace
+        // (inline-block whitespace segments can collapse to zero width in some browsers).
+        return raw.match(/[\s\u200B\u200C\u200D\uFEFF]+|[^\s\u200B\u200C\u200D\uFEFF]+/g) || [raw];
+    };
+    const shouldCountSegment = (segment) => {
+        if (segment === '\r') return false;
+        if (segmentLineBreaks) return true;
+        return Boolean(String(segment || '').trim().length);
+    };
+
+    const walker = document.createTreeWalker(rootEl, segmentLineBreaks ? (NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT) : NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+            if (!node) return NodeFilter.FILTER_REJECT;
+
+            if (segmentLineBreaks && node instanceof HTMLBRElement) {
+                const parent = node.parentElement;
+                if (!parent) return NodeFilter.FILTER_REJECT;
+                if (parent.closest(`.${STREAM_SEG_CLASS}`)) return NodeFilter.FILTER_REJECT;
+                if (isWithinNytwProtectedContent(parent)) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
+            }
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const el = /** @type {Element} */ (node);
+                if (isNytwProtectedContentElement(el)) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_SKIP;
+            }
+
+            if (!node || !node.nodeValue) return NodeFilter.FILTER_REJECT;
+            if (isLikelyNytwMarkdownTableSource(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+            const parent = node.parentElement;
+            if (!parent) return NodeFilter.FILTER_REJECT;
+            if (parent.closest(`.${STREAM_SEG_CLASS}`)) return NodeFilter.FILTER_REJECT;
+            if (isWithinNytwProtectedContent(parent)) return NodeFilter.FILTER_REJECT;
+            if (/^\\s*$/.test(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+        },
+    });
+
+    const nodes = [];
+    let n = walker.nextNode();
+    while (n) {
+        nodes.push(n);
+        n = walker.nextNode();
+    }
+
+    for (const node of nodes) {
+        if (node instanceof HTMLBRElement) {
+            const span = document.createElement('span');
+            span.className = STREAM_SEG_CLASS;
+            span.setAttribute(STREAM_SEG_BR_ATTR, '1');
+
+            const isNew = globalIndex >= baseIndex;
+            if (isNew) span.setAttribute(STREAM_SEG_NEW_ATTR, '1');
+            span.style.setProperty('--nytw-stream-i', String(Math.max(0, globalIndex - baseIndex)));
+
+            node.replaceWith(span);
+            span.appendChild(node);
+
+            globalIndex += 1;
+            continue;
+        }
+
+        const textNode = /** @type {Text} */ (node);
+        const fragment = document.createDocumentFragment();
+        const segments = segmentText(textNode.data, resolvedGranularity);
+        for (const segment of segments) {
+            if (segment === '\r') continue;
+            if (segment === '\n') continue;
+
+            const parts = splitSegmentParts(segment);
+            for (const part of parts) {
+                if (!part) continue;
+                if (part === '\r') continue;
+                if (part === '\n') continue;
+
+                const span = document.createElement('span');
+                span.className = STREAM_SEG_CLASS;
+                if (/^[\s\u200B\u200C\u200D\uFEFF]+$/.test(part)) {
+                    span.setAttribute(STREAM_SEG_WS_ATTR, '1');
+                }
+
+                const isNew = globalIndex >= baseIndex;
+                if (isNew) span.setAttribute(STREAM_SEG_NEW_ATTR, '1');
+                span.style.setProperty('--nytw-stream-i', String(Math.max(0, globalIndex - baseIndex)));
+                span.textContent = part;
+                fragment.appendChild(span);
+
+                if (shouldCountSegment(part)) globalIndex += 1;
+            }
+        }
+        textNode.replaceWith(fragment);
+    }
+
+    return { totalIndex: globalIndex };
+}
+
+function parseTimeToMs(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return 0;
+    if (raw.endsWith('ms')) return Number(raw.slice(0, -2)) || 0;
+    if (raw.endsWith('s')) return (Number(raw.slice(0, -1)) || 0) * 1000;
+    return Number(raw) || 0;
+}
+
+function typewriterizeNode(node, ctx) {
+    if (!node) return document.createDocumentFragment();
+
+    if (node.nodeType === Node.TEXT_NODE) {
+        if (isLikelyNytwMarkdownTableSource(node.textContent || '')) {
+            return document.createTextNode(node.textContent || '');
+        }
+
+        const frag = document.createDocumentFragment();
+        const segments = splitGraphemes(node.textContent || '');
+        for (const segment of segments) {
+            if (segment === '\r') continue;
+            if (segment === '\n') {
+                frag.appendChild(document.createElement('br'));
+                continue;
+            }
+            const span = document.createElement('span');
+            span.className = CHAR_CLASS;
+            span.style.setProperty('--ny-tw-i', String(ctx.index));
+            span.textContent = segment;
+            frag.appendChild(span);
+            if (segment.trim().length) ctx.index += 1;
+        }
+        return frag;
+    }
+
+    if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = /** @type {Element} */ (node);
+
+        if (isNytwProtectedContentElement(el)) {
+            return el.cloneNode(true);
+        }
+
+        if (el.tagName === 'BR') {
+            return document.createElement('br');
+        }
+
+        if (el.tagName === 'Q') {
+            const clone = /** @type {HTMLElement} */ (el.cloneNode(false));
+            clone.style.setProperty('--ny-tw-q-open-i', String(ctx.index));
+            ctx.index += 1;
+            el.childNodes.forEach(child => clone.appendChild(typewriterizeNode(child, ctx)));
+            clone.style.setProperty('--ny-tw-q-close-i', String(ctx.index));
+            ctx.index += 1;
+            return clone;
+        }
+
+        const clone = /** @type {Element} */ (el.cloneNode(false));
+        el.childNodes.forEach(child => clone.appendChild(typewriterizeNode(child, ctx)));
+        return clone;
+    }
+
+    return document.createDocumentFragment();
+}
+
+function countExistingTypewriterChars(innerEl) {
+    if (!innerEl) return 0;
+    let charCount = 0;
+    innerEl.querySelectorAll('.ny-tw-char').forEach((el) => {
+        if ((el.textContent || '').trim().length) charCount += 1;
+    });
+    charCount += innerEl.querySelectorAll('q').length * 2;
+    return charCount;
+}
+
+function hasNonEmptyTextContent(innerEl) {
+    if (!innerEl) return false;
+    return (innerEl.textContent || '').trim().length > 0;
+}
+
+function ensureProcessed(dialogueEl) {
+    if (!dialogueEl) return { charCount: 0 };
+
+    const inner = dialogueEl.firstElementChild;
+    if (!inner) return { charCount: 0 };
+
+    if (dialogueEl.getAttribute(PROCESSED_ATTR) === '1') {
+        const existingCharCount = countExistingTypewriterChars(inner);
+        if (existingCharCount > 0 || !hasNonEmptyTextContent(inner)) {
+            if (dialogueEl.getAttribute(COUNT_ATTR) !== String(existingCharCount)) {
+                dialogueEl.setAttribute(COUNT_ATTR, String(existingCharCount));
+            }
+            return { charCount: existingCharCount };
+        }
+
+        // Content changed after processing (e.g. SillyTavern post-processing),
+        // so we need to rebuild per-grapheme nodes.
+        dialogueEl.removeAttribute(PROCESSED_ATTR);
+        dialogueEl.removeAttribute(COUNT_ATTR);
+    }
+
+    const ctx = { index: 0 };
+    const frag = document.createDocumentFragment();
+    inner.childNodes.forEach(node => frag.appendChild(typewriterizeNode(node, ctx)));
+    inner.textContent = '';
+    inner.appendChild(frag);
+
+    dialogueEl.setAttribute(PROCESSED_ATTR, '1');
+    dialogueEl.setAttribute(COUNT_ATTR, String(ctx.index));
+    return { charCount: ctx.index };
+}
+
+function wrapBundleQuotesAndCustom(rootEl) {
+    if (!rootEl || !(rootEl instanceof HTMLElement)) return;
+    if (rootEl.getAttribute(BUNDLE_PROCESSED_ATTR) === '1') return;
+
+    applyQuoteWrapping(rootEl);
+
+    const dialogueId = rootEl.getAttribute('data-ny-dialogue-id') || '';
+    const customId = rootEl.getAttribute('data-ny-custom-id') || '';
+
+    const dialogueTypewriter = rootEl.getAttribute('data-ny-dialogue-tw') === '1';
+    const dialogueSkippable = rootEl.getAttribute('data-ny-dialogue-skip') === '1';
+    const customTypewriter = rootEl.getAttribute('data-ny-custom-tw') === '1';
+    const customSkippable = rootEl.getAttribute('data-ny-custom-skip') === '1';
+
+    const dialogueOuterClass = dialogueId ? `ny-dialogue-${dialogueId}` : '';
+    const dialogueInnerClass = dialogueId ? `ny-dialogue-inner-${dialogueId}` : '';
+    const customOuterClass = customId ? `ny-custom-${customId}` : '';
+    const customInnerClass = customId ? `ny-custom-inner-${customId}` : '';
+
+    const customOpen = safeDecodeURIComponent(rootEl.getAttribute('data-ny-custom-open') || '');
+    const customClose = safeDecodeURIComponent(rootEl.getAttribute('data-ny-custom-close') || '');
+
+    const wrapQ = (q, outerClass, innerClass, baseClass, typewriter, skippable) => {
+        if (!q || !(q instanceof HTMLElement)) return;
+        if (!outerClass || !innerClass) return;
+        if (!q.parentNode) return;
+
+        const outer = document.createElement('span');
+        outer.className = buildScopedClassNames(
+            baseClass,
+            outerClass,
+            typewriter ? 'Ny-font-manager' : '',
+        );
+        if (typewriter && skippable) outer.setAttribute('tabindex', '0');
+
+        const inner = document.createElement('span');
+        inner.className = buildScopedClassNames(innerClass);
+
+        outer.appendChild(inner);
+        q.parentNode.replaceChild(outer, q);
+        inner.appendChild(q);
+    };
+
+    // 1) Wrap <q> elements into dialogue/custom wrappers.
+    //    IMPORTANT: SillyTavern wraps multiple quote pairs into <q>, including 『』.
+    //    If the user sets custom delimiters to 『』, those <q> must be treated as custom, not dialogue.
+    const dialoguePairs = DIALOGUE_QUOTE_PAIRS;
+    const qEls = Array.from(rootEl.querySelectorAll('q'));
+    for (const q of qEls) {
+        if (!(q instanceof HTMLElement)) continue;
+        if (!q.parentElement) continue;
+        if (isWithinNytwProtectedContent(q)) continue;
+        if (dialogueOuterClass && q.closest(`.${dialogueOuterClass}`)) continue;
+        if (customOuterClass && q.closest(`.${customOuterClass}`)) continue;
+
+        const qText = (q.textContent || '').trim();
+        const isCustomQ = Boolean(
+            customOpen
+            && customClose
+            && qText.startsWith(customOpen)
+            && qText.endsWith(customClose)
+            && qText.length >= (customOpen.length + customClose.length),
+        );
+        const isDialogueQ = dialoguePairs.some(([open, close]) => (
+            qText.startsWith(open)
+            && qText.endsWith(close)
+            && qText.length >= (open.length + close.length)
+        ));
+
+        if (isCustomQ) {
+            q.removeAttribute('data-ny-q-plain');
+            wrapQ(q, customOuterClass, customInnerClass, 'ny-custom', customTypewriter, customSkippable);
+            continue;
+        }
+
+        if (isDialogueQ) {
+            q.removeAttribute('data-ny-q-plain');
+            wrapQ(q, dialogueOuterClass, dialogueInnerClass, 'ny-dialogue', dialogueTypewriter, dialogueSkippable);
+            continue;
+        }
+
+        q.setAttribute('data-ny-q-plain', '1');
+    }
+
+    // 2) Wrap custom symbol pairs in text nodes into custom wrappers.
+    if (customOuterClass && customInnerClass && customOpen && customClose) {
+        const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+            acceptNode(node) {
+                if (!node || !node.nodeValue) return NodeFilter.FILTER_REJECT;
+                if (isLikelyNytwMarkdownTableSource(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+                if (!node.nodeValue.includes(customOpen)) return NodeFilter.FILTER_REJECT;
+                const parent = node.parentElement;
+                if (!parent) return NodeFilter.FILTER_REJECT;
+                if (parent.closest(`.${customOuterClass}`)) return NodeFilter.FILTER_REJECT;
+                if (isWithinNytwProtectedContent(parent)) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
+            },
+        });
+
+        const textNodes = [];
+        let n = walker.nextNode();
+        while (n) {
+            textNodes.push(/** @type {Text} */ (n));
+            n = walker.nextNode();
+        }
+
+        const openLen = customOpen.length;
+        const closeLen = customClose.length;
+        for (const textNode of textNodes) {
+            const text = textNode.nodeValue || '';
+            let idx = 0;
+            let changed = false;
+            const frag = document.createDocumentFragment();
+
+            while (idx < text.length) {
+                const openIdx = text.indexOf(customOpen, idx);
+                if (openIdx === -1) break;
+                const closeIdx = text.indexOf(customClose, openIdx + openLen);
+                if (closeIdx === -1) break;
+
+                if (openIdx > idx) {
+                    frag.appendChild(document.createTextNode(text.slice(idx, openIdx)));
+                }
+
+                const matchedText = text.slice(openIdx, closeIdx + closeLen);
+                const outer = document.createElement('span');
+                outer.className = buildScopedClassNames(
+                    'ny-custom',
+                    customOuterClass,
+                    customTypewriter ? 'Ny-font-manager' : '',
+                );
+                if (customTypewriter && customSkippable) outer.setAttribute('tabindex', '0');
+
+                const inner = document.createElement('span');
+                inner.className = buildScopedClassNames(customInnerClass);
+                inner.textContent = matchedText;
+                outer.appendChild(inner);
+                frag.appendChild(outer);
+
+                changed = true;
+                idx = closeIdx + closeLen;
+            }
+
+            if (!changed) continue;
+            if (idx < text.length) {
+                frag.appendChild(document.createTextNode(text.slice(idx)));
+            }
+            textNode.parentNode?.replaceChild(frag, textNode);
+        }
+    }
+
+    rootEl.setAttribute(BUNDLE_PROCESSED_ATTR, '1');
+}
+
+function cleanupStreamingBuffer(messageEl) {
+    if (!messageEl || !(messageEl instanceof HTMLElement)) return;
+    messageEl.removeAttribute(STREAM_RENDER_ATTR);
+    messageEl.removeAttribute(STREAM_ANIM_ATTR);
+    messageEl.removeAttribute(STREAM_CURSOR_ATTR);
+    messageEl.removeAttribute(STREAM_CURSOR_SHAPE_ATTR);
+    messageEl.removeAttribute(STREAM_CURSOR_ANIM_ATTR);
+    messageEl.style?.removeProperty?.(STREAM_STEP_VAR);
+    messageEl.style?.removeProperty?.(STREAM_CURSOR_IMAGE_VAR);
+    messageEl.style?.removeProperty?.('--nytw-stream-p-mt');
+    messageEl.style?.removeProperty?.('--nytw-stream-p-mb');
+    messageEl.style?.removeProperty?.('--nytw-stream-p-mb-last');
+    const buffer = messageEl.querySelector(`.mes_text.${STREAM_BUFFER_CLASS}`);
+    buffer?.remove();
+}
+
+function unwrapTextAnimationBodyWrapper(el) {
+    if (!el || !(el instanceof HTMLElement)) return;
+    if (!el.hasAttribute(TEXT_ANIM_BODY_WRAP_ATTR)) return;
+
+    const parent = el.parentNode;
+    if (!parent) {
+        el.remove();
+        return;
+    }
+
+    while (el.firstChild) {
+        parent.insertBefore(el.firstChild, el);
+    }
+    parent.removeChild(el);
+    parent.normalize?.();
+}
+
+function cleanupTextAnimationBodyWrappers(root = document) {
+    root.querySelectorAll?.(`[${TEXT_ANIM_BODY_WRAP_ATTR}]`).forEach((el) => {
+        if (el instanceof HTMLElement) unwrapTextAnimationBodyWrapper(el);
+    });
+}
+
+function clearTextAnimationTarget(el, { unwrapBodyWrapper = false } = {}) {
+    if (!el || !(el instanceof HTMLElement)) return;
+    el.removeAttribute(TEXT_ANIM_ATTR);
+    el.removeAttribute(TEXT_ANIM_ROLE_ATTR);
+    el.style?.removeProperty?.(TEXT_ANIM_COLOR_VAR);
+    el.style?.removeProperty?.(TEXT_ANIM_POWER_VAR);
+    el.style?.removeProperty?.(TEXT_ANIM_CYCLE_VAR);
+    el.style?.removeProperty?.(TEXT_ANIM_SHADOW_VAR);
+    el.style?.removeProperty?.(TEXT_ANIM_SHADOW_SOFT_VAR);
+    el.style?.removeProperty?.(TEXT_ANIM_SHADOW_DEEP_VAR);
+    el.style?.removeProperty?.(TEXT_ANIM_SHIFT_VAR);
+    el.style?.removeProperty?.(TEXT_ANIM_SHIFT_NEG_VAR);
+    el.style?.removeProperty?.(TEXT_ANIM_SHIFT_SOFT_VAR);
+    el.style?.removeProperty?.(TEXT_ANIM_SHIFT_SOFT_NEG_VAR);
+    el.style?.removeProperty?.(TEXT_ANIM_DIM_VAR);
+    el.style?.removeProperty?.(TEXT_ANIM_VEIL_VAR);
+    if (unwrapBodyWrapper) unwrapTextAnimationBodyWrapper(el);
+}
+
+function getTextAnimationConfig(role) {
+    const normalizedRole = role === 'dialogue' ? 'dialogue' : (role === 'global' ? 'global' : 'body');
+    const prefix = normalizedRole === 'dialogue'
+        ? 'textAnimDialogue'
+        : (normalizedRole === 'global' ? 'textAnimGlobal' : 'textAnimBody');
+    return {
+        role: normalizedRole,
+        effect: normalizeTextAnimEffect(settings[`${prefix}Effect`]),
+        color: normalizeTextAnimColor(settings[`${prefix}Color`]),
+        intensity: clampTextAnimIntensity(settings[`${prefix}Intensity`]),
+        period: clampTextAnimPeriod(settings[`${prefix}Period`]),
+    };
+}
+
+function getResolvedTextAnimationConfig(role) {
+    const normalizedRole = role === 'dialogue' ? 'dialogue' : 'body';
+    const usesOverride = normalizedRole === 'dialogue'
+        ? settings.textAnimDialogueOverride === true
+        : settings.textAnimBodyOverride === true;
+
+    const config = usesOverride
+        ? getTextAnimationConfig(normalizedRole)
+        : getTextAnimationConfig('global');
+
+    return { ...config, role: normalizedRole };
+}
+
+function isTextAnimationConfigActive(config) {
+    return Boolean(config && config.effect !== 'none');
+}
+
+function applyTextAnimationTarget(el, config) {
+    if (!el || !(el instanceof HTMLElement)) return;
+    const { role, effect, color, intensity, period } = config;
+    const shadowPx = intensity <= 0 ? 0 : Math.round(intensity * 1.6) / 10;
+    const shadowSoftPx = Math.round(shadowPx * 0.55 * 10) / 10;
+    const shadowDeepPx = Math.round(shadowPx * 1.55 * 10) / 10;
+    const shiftPx = intensity <= 0 ? 0 : Math.max(0.4, Math.round(intensity * 0.025 * 10) / 10);
+    const shiftSoftPx = shiftPx ? Math.round(shiftPx * 0.6 * 10) / 10 : 0;
+    const dim = Math.max(0.86, 1 - (intensity * 0.0018));
+    const veil = Math.max(0.52, 1 - (intensity * 0.006));
+    el.setAttribute(TEXT_ANIM_ATTR, effect);
+    el.setAttribute(TEXT_ANIM_ROLE_ATTR, role);
+    el.style?.setProperty?.(TEXT_ANIM_COLOR_VAR, color || 'currentColor');
+    el.style?.setProperty?.(TEXT_ANIM_POWER_VAR, String(intensity / 100));
+    el.style?.setProperty?.(TEXT_ANIM_CYCLE_VAR, `${period}s`);
+    el.style?.setProperty?.(TEXT_ANIM_SHADOW_VAR, `${shadowPx}px`);
+    el.style?.setProperty?.(TEXT_ANIM_SHADOW_SOFT_VAR, `${shadowSoftPx}px`);
+    el.style?.setProperty?.(TEXT_ANIM_SHADOW_DEEP_VAR, `${shadowDeepPx}px`);
+    el.style?.setProperty?.(TEXT_ANIM_SHIFT_VAR, `${shiftPx}px`);
+    el.style?.setProperty?.(TEXT_ANIM_SHIFT_NEG_VAR, shiftPx ? `-${shiftPx}px` : '0px');
+    el.style?.setProperty?.(TEXT_ANIM_SHIFT_SOFT_VAR, `${shiftSoftPx}px`);
+    el.style?.setProperty?.(TEXT_ANIM_SHIFT_SOFT_NEG_VAR, shiftSoftPx ? `-${shiftSoftPx}px` : '0px');
+    el.style?.setProperty?.(TEXT_ANIM_DIM_VAR, String(Math.round(dim * 1000) / 1000));
+    el.style?.setProperty?.(TEXT_ANIM_VEIL_VAR, String(Math.round(veil * 1000) / 1000));
+}
+
+function isNestedTextAnimationDialogue(el) {
+    if (!el || !(el instanceof HTMLElement)) return false;
+    const parentDialogue = el.parentElement?.closest?.(TEXT_ANIM_DIALOGUE_SELECTOR);
+    return Boolean(parentDialogue && parentDialogue !== el);
+}
+
+function collectDialogueTextAnimationTargets(messageTextEl) {
+    if (!messageTextEl || !(messageTextEl instanceof HTMLElement)) return [];
+    return Array.from(messageTextEl.querySelectorAll(TEXT_ANIM_DIALOGUE_SELECTOR))
+        .filter((el) => el instanceof HTMLElement && !isNestedTextAnimationDialogue(el));
+}
+
+function isInsideAnyElement(node, elements) {
+    return elements.some((el) => el instanceof HTMLElement && el.contains(node));
+}
+
+function hasNestedTextAnimationBodyBlock(el) {
+    if (!el || !(el instanceof HTMLElement)) return false;
+    return Array.from(el.querySelectorAll(TEXT_ANIM_BODY_BLOCK_SELECTOR))
+        .some((child) => (
+            child instanceof HTMLElement
+            && child !== el
+            && !child.closest(TEXT_ANIM_DIALOGUE_SELECTOR)
+            && !child.closest(TEXT_ANIM_SKIP_SELECTOR)
+            && Boolean(String(child.textContent || '').trim())
+        ));
+}
+
+function isEligibleTextAnimationBodyWrapper(el, blockTargets) {
+    if (!el || !(el instanceof HTMLElement)) return false;
+    if (!el.hasAttribute(TEXT_ANIM_BODY_WRAP_ATTR)) return false;
+    if (!String(el.textContent || '').trim()) return false;
+    if (el.closest(TEXT_ANIM_DIALOGUE_SELECTOR)) return false;
+    if (el.closest(TEXT_ANIM_SKIP_SELECTOR)) return false;
+    return !isInsideAnyElement(el, blockTargets);
+}
+
+function wrapBodyTextAnimationTextNode(textNode) {
+    if (!textNode?.parentNode) return null;
+    const wrapper = document.createElement('span');
+    wrapper.setAttribute(TEXT_ANIM_BODY_WRAP_ATTR, '1');
+    textNode.parentNode.replaceChild(wrapper, textNode);
+    wrapper.appendChild(textNode);
+    return wrapper;
+}
+
+function collectBodyTextAnimationInlineTargets(messageTextEl, blockTargets) {
+    if (!messageTextEl || !(messageTextEl instanceof HTMLElement)) return [];
+
+    const targets = Array.from(messageTextEl.querySelectorAll(`[${TEXT_ANIM_BODY_WRAP_ATTR}]`))
+        .filter((el) => isEligibleTextAnimationBodyWrapper(el, blockTargets));
+
+    const textNodes = [];
+    const walker = document.createTreeWalker(messageTextEl, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+            if (!node || !String(node.nodeValue || '').trim()) return NodeFilter.FILTER_REJECT;
+
+            const parent = node.parentElement;
+            if (!parent) return NodeFilter.FILTER_REJECT;
+            if (parent.closest(`[${TEXT_ANIM_BODY_WRAP_ATTR}]`)) return NodeFilter.FILTER_REJECT;
+            if (parent.closest(TEXT_ANIM_DIALOGUE_SELECTOR)) return NodeFilter.FILTER_REJECT;
+            if (parent.closest(TEXT_ANIM_SKIP_SELECTOR)) return NodeFilter.FILTER_REJECT;
+            if (isInsideAnyElement(node, blockTargets)) return NodeFilter.FILTER_REJECT;
+
+            return NodeFilter.FILTER_ACCEPT;
+        },
+    });
+
+    let node = walker.nextNode();
+    while (node) {
+        textNodes.push(node);
+        node = walker.nextNode();
+    }
+
+    for (const textNode of textNodes) {
+        const wrapper = wrapBodyTextAnimationTextNode(textNode);
+        if (wrapper) targets.push(wrapper);
+    }
+
+    return targets;
+}
+
+function collectBodyTextAnimationTargets(messageTextEl) {
+    if (!messageTextEl || !(messageTextEl instanceof HTMLElement)) return [];
+    const blockTargets = Array.from(messageTextEl.querySelectorAll(TEXT_ANIM_BODY_BLOCK_SELECTOR))
+        .filter((el) => {
+            if (!(el instanceof HTMLElement)) return false;
+            if (el.matches(TEXT_ANIM_DIALOGUE_SELECTOR)) return false;
+            if (el.closest(TEXT_ANIM_DIALOGUE_SELECTOR)) return false;
+            if (el.matches(TEXT_ANIM_SKIP_SELECTOR)) return false;
+            if (hasNestedTextAnimationBodyBlock(el)) return false;
+            if (el.querySelector(TEXT_ANIM_DIALOGUE_SELECTOR)) return false;
+            return Boolean(String(el.textContent || '').trim());
+        });
+
+    const inlineTargets = collectBodyTextAnimationInlineTargets(messageTextEl, blockTargets);
+    if (blockTargets.length || inlineTargets.length) return [...blockTargets, ...inlineTargets];
+
+    return messageTextEl.querySelector(TEXT_ANIM_DIALOGUE_SELECTOR)
+        ? []
+        : (String(messageTextEl.textContent || '').trim() ? [messageTextEl] : []);
+}
+
+function collectMessageTextElsForTextAnimation(messageEl) {
+    if (!messageEl || !(messageEl instanceof HTMLElement)) return [];
+    return Array.from(messageEl.querySelectorAll(`.mes_text:not(.${STREAM_BUFFER_CLASS})`))
+        .filter((el) => el instanceof HTMLElement && Boolean(String(el.textContent || '').trim()));
+}
+
+function getMessageFloorNumber(messageEl) {
+    const raw = messageEl?.getAttribute?.('mesid');
+    const num = Number(raw);
+    return Number.isFinite(num) ? num : null;
+}
+
+function syncTextAnimationTargets() {
+    const bodyConfig = getResolvedTextAnimationConfig('body');
+    const dialogueConfig = getResolvedTextAnimationConfig('dialogue');
+    const enabled = settings.fontsEnabled
+        && settings.textAnimEnabled === true
+        && (isTextAnimationConfigActive(bodyConfig) || isTextAnimationConfigActive(dialogueConfig));
+
+    const marked = Array.from(document.querySelectorAll(`#chat [${TEXT_ANIM_ATTR}]`))
+        .filter((el) => el instanceof HTMLElement);
+
+    if (!enabled) {
+        marked.forEach((el) => clearTextAnimationTarget(el, { unwrapBodyWrapper: true }));
+        cleanupTextAnimationBodyWrappers(document.getElementById('chat') || document);
+        return;
+    }
+
+    const activeId = getActiveStreamingMessageId();
+    const candidateMessages = Array.from(document.querySelectorAll(`#chat .mes:not(.${STREAMING_MESSAGE_CLASS})`))
+        .map((messageEl, domIndex) => ({
+            messageEl,
+            domIndex,
+            floorNumber: getMessageFloorNumber(messageEl),
+        }))
+        .filter(({ messageEl }) => {
+            if (!(messageEl instanceof HTMLElement)) return false;
+            if (activeId && messageEl.getAttribute('mesid') === activeId) return false;
+            return collectMessageTextElsForTextAnimation(messageEl).length > 0;
+        })
+        .sort((a, b) => {
+            if (a.floorNumber !== null && b.floorNumber !== null && a.floorNumber !== b.floorNumber) {
+                return a.floorNumber - b.floorNumber;
+            }
+            if (a.floorNumber !== null && b.floorNumber === null) return -1;
+            if (a.floorNumber === null && b.floorNumber !== null) return 1;
+            return a.domIndex - b.domIndex;
+        });
+
+    const recentFloorCount = clampTextAnimRecentFloors(settings.textAnimRecentFloors);
+    settings.textAnimRecentFloors = recentFloorCount;
+    const activeMessageTextEls = candidateMessages
+        .slice(-recentFloorCount)
+        .flatMap(({ messageEl }) => collectMessageTextElsForTextAnimation(messageEl));
+    const activeTargets = new Set();
+    for (const messageTextEl of activeMessageTextEls) {
+        const dialogueTargets = isTextAnimationConfigActive(dialogueConfig)
+            ? collectDialogueTextAnimationTargets(messageTextEl)
+            : [];
+        const bodyTargets = isTextAnimationConfigActive(bodyConfig)
+            ? collectBodyTextAnimationTargets(messageTextEl)
+            : [];
+
+        bodyTargets.forEach((el) => activeTargets.add(el));
+        dialogueTargets.forEach((el) => activeTargets.add(el));
+    }
+
+    marked.forEach((el) => {
+        if (!activeTargets.has(el)) clearTextAnimationTarget(el, { unwrapBodyWrapper: true });
+    });
+    for (const messageTextEl of activeMessageTextEls) {
+        if (isTextAnimationConfigActive(bodyConfig)) {
+            collectBodyTextAnimationTargets(messageTextEl)
+                .forEach((el) => applyTextAnimationTarget(el, bodyConfig));
+        }
+        if (isTextAnimationConfigActive(dialogueConfig)) {
+            collectDialogueTextAnimationTargets(messageTextEl)
+                .forEach((el) => applyTextAnimationTarget(el, dialogueConfig));
+        }
+    }
+}
+
+function findStreamingSourceMesText(messageEl) {
+    if (!messageEl || !(messageEl instanceof HTMLElement)) return null;
+    const candidates = Array.from(messageEl.querySelectorAll('.mes_text'));
+    for (const el of candidates) {
+        if (!(el instanceof HTMLElement)) continue;
+        if (el.classList.contains(STREAM_BUFFER_CLASS)) continue;
+        return el;
+    }
+    return null;
+}
+
+function syncStreamingParagraphMargins(messageEl, sourceEl) {
+    if (!messageEl || !(messageEl instanceof HTMLElement)) return;
+    if (!sourceEl || !(sourceEl instanceof HTMLElement)) return;
+
+    const ps = Array.from(sourceEl.querySelectorAll('p'));
+    if (!ps.length) return;
+    const firstP = ps[0];
+    const lastP = ps[ps.length - 1];
+    if (!(firstP instanceof HTMLElement) || !(lastP instanceof HTMLElement)) return;
+
+    const firstStyle = getComputedStyle(firstP);
+    const lastStyle = getComputedStyle(lastP);
+    messageEl.style?.setProperty?.('--nytw-stream-p-mt', firstStyle.marginTop);
+    messageEl.style?.setProperty?.('--nytw-stream-p-mb', firstStyle.marginBottom);
+    messageEl.style?.setProperty?.('--nytw-stream-p-mb-last', lastStyle.marginBottom);
+}
+
+function syncStreamingBuffer(messageEl, { animEffect = 'none' } = {}) {
+    if (!messageEl || !(messageEl instanceof HTMLElement)) return null;
+    const source = findStreamingSourceMesText(messageEl);
+    if (!source) return null;
+    syncStreamingParagraphMargins(messageEl, source);
+
+    let buffer = messageEl.querySelector(`.mes_text.${STREAM_BUFFER_CLASS}`);
+    if (!(buffer instanceof HTMLElement)) {
+        buffer = document.createElement('div');
+        buffer.className = `mes_text ${STREAM_BUFFER_CLASS}`;
+        source.insertAdjacentElement('afterend', buffer);
+    }
+
+    const nextHtml = source.innerHTML;
+    const effect = normalizeStreamAnimEffect(animEffect);
+    const stepMs = clampStreamAnimSpeed(settings.streamAnimSpeed);
+    if (effect === 'none') {
+        if (buffer.innerHTML !== nextHtml) {
+            buffer.innerHTML = nextHtml;
+        }
+        return buffer;
+    }
+
+    const granularity = effect === 'typewriter' ? 'grapheme' : 'word';
+    const nextSig = `${nextHtml.length}:${nextHtml.length ? nextHtml.charCodeAt(nextHtml.length - 1) : 0}`;
+
+    const prevMode = buffer.dataset.nytwStreamSegMode || '';
+    const prevSig = buffer.dataset.nytwStreamSrcSig || '';
+    if (prevMode === granularity && prevSig === nextSig) {
+        ensureTypewriterStreamProgress(buffer, { stepMs, effect, granularity });
+        return buffer;
+    }
+
+    const prevShownCount = prevMode === granularity ? (Number(buffer.dataset[STREAM_SHOWN_COUNT_DATA]) || 0) : 0;
+    const baseIndex = prevMode === granularity ? prevShownCount : 0;
+    const target = /** @type {HTMLElement} */ (buffer.cloneNode(false));
+    target.innerHTML = nextHtml;
+    stripStreamingBufferWhitespace(target);
+
+    // Apply font processing first so quote/custom/locale wrappers remain intact.
+    processContainerInner(target, { enableTypewriter: false });
+
+    const { totalIndex } = segmentTextForStreamingAnimation(target, { granularity, baseIndex });
+
+    target.dataset[STREAM_SEG_COUNT_DATA] = String(totalIndex);
+    target.dataset[STREAM_SHOWN_COUNT_DATA] = String(Math.min(prevShownCount, totalIndex));
+    target.dataset.nytwStreamSegMode = granularity;
+    target.dataset.nytwStreamSrcSig = nextSig;
+
+    morphdom(buffer, target);
+
+    ensureTypewriterStreamProgress(buffer, { stepMs, effect, granularity });
+    return buffer;
+}
+
+function syncTypewriterStreamBlockVisibility(bufferEl) {
+    if (!bufferEl || !(bufferEl instanceof HTMLElement)) return;
+
+    const blocks = bufferEl.querySelectorAll('p, li, blockquote, pre, ul, ol');
+    const hasMeaningfulMedia = (el) => Boolean(el.querySelector('img, video, audio, svg, canvas, iframe'));
+
+    for (const block of blocks) {
+        if (!(block instanceof HTMLElement)) continue;
+
+        const hasRevealedSeg = Boolean(block.querySelector(`.${STREAM_SEG_CLASS}:not([${STREAM_SEG_NEW_ATTR}])`));
+        const hasAnySeg = Boolean(block.querySelector(`.${STREAM_SEG_CLASS}`));
+        const isEmptyText = !hasMeaningfulMedia(block) && !String(block.textContent || '').trim();
+
+        const shouldHide = !hasRevealedSeg && (hasAnySeg || isEmptyText);
+        if (shouldHide) {
+            if (block.getAttribute(STREAM_BLOCK_HIDDEN_ATTR) !== '1') {
+                block.setAttribute(STREAM_BLOCK_HIDDEN_ATTR, '1');
+                block.style.display = 'none';
+            }
+        } else if (block.getAttribute(STREAM_BLOCK_HIDDEN_ATTR) === '1') {
+            block.style.removeProperty('display');
+            block.removeAttribute(STREAM_BLOCK_HIDDEN_ATTR);
+        }
+    }
+}
+
+function syncTypewriterStreamCursor(bufferEl) {
+    if (!bufferEl || !(bufferEl instanceof HTMLElement)) return;
+
+    bufferEl.querySelectorAll(`.${STREAM_CURSOR_CLASS}`).forEach((el) => el.remove());
+
+    const messageEl = bufferEl.closest('.mes');
+    const cursorEnabled = Boolean(messageEl instanceof HTMLElement && messageEl.getAttribute(STREAM_CURSOR_ATTR) === '1');
+    if (!cursorEnabled) return;
+
+    const cursorEl = document.createElement('span');
+    cursorEl.className = STREAM_CURSOR_CLASS;
+    cursorEl.setAttribute('aria-hidden', 'true');
+
+    const shownSegs = bufferEl.querySelectorAll(`.${STREAM_SEG_CLASS}:not([${STREAM_SEG_NEW_ATTR}])`);
+    const lastShownSeg = shownSegs.length ? shownSegs[shownSegs.length - 1] : null;
+    if (lastShownSeg instanceof HTMLElement) {
+        lastShownSeg.insertAdjacentElement('afterend', cursorEl);
+    } else {
+        bufferEl.prepend(cursorEl);
+    }
+}
+
+function ensureTypewriterStreamProgress(bufferEl, { stepMs = 20, effect = 'typewriter', granularity = 'grapheme' } = {}) {
+    if (!bufferEl || !(bufferEl instanceof HTMLElement)) return;
+    const resolvedEffect = normalizeStreamAnimEffect(effect);
+    if (resolvedEffect === 'none') return;
+
+    const resolvedStepMs = clampStreamAnimSpeed(stepMs);
+    const isSyncMode = stepMs <= 0;
+
+    // Optimized path for "Follow Actual Speed" (Sync Mode)
+    // Instantly reveal all pending segments without using timers.
+    if (isSyncMode) {
+        const pending = bufferEl.querySelectorAll(`.${STREAM_SEG_CLASS}[${STREAM_SEG_NEW_ATTR}]`);
+        if (pending.length > 0) {
+            pending.forEach((next) => {
+                if (!(next instanceof HTMLElement)) return;
+                
+                if (resolvedEffect === 'blur') {
+                    next.style.opacity = '0';
+                    next.style.filter = 'blur(10px)';
+                    next.style.animation = 'nytw-stream-blur-in 320ms cubic-bezier(.2,.8,.2,1) both';
+                } else if (resolvedEffect === 'glow') {
+                    next.style.opacity = '0';
+                    next.style.textShadow = '0 0 0 rgba(120,180,255,.0)';
+                    next.style.animation = 'nytw-stream-glow-in 420ms cubic-bezier(.18,.89,.32,1.05) both';
+                }
+
+                next.style.removeProperty('display');
+                next.removeAttribute(STREAM_SEG_NEW_ATTR);
+            });
+
+            // Update counts in batch
+            const shown = Number(bufferEl.dataset[STREAM_SHOWN_COUNT_DATA]) || 0;
+            // In sync mode, we assume all segments are shown
+            const total = Number(bufferEl.dataset[STREAM_SEG_COUNT_DATA]) || 0;
+            bufferEl.dataset[STREAM_SHOWN_COUNT_DATA] = String(Math.max(shown, total));
+
+            syncTypewriterStreamBlockVisibility(bufferEl);
+            syncTypewriterStreamCursor(bufferEl);
+        }
+        // Clear any existing timer if we switched from normal speed to sync
+        const existing = streamTypewriterTimers.get(bufferEl);
+        if (existing?.timerId) clearTimeout(existing.timerId);
+        streamTypewriterTimers.delete(bufferEl);
+        return;
+    }
+
+    bufferEl.querySelectorAll(`.${STREAM_SEG_CLASS}[${STREAM_SEG_NEW_ATTR}]`).forEach((el) => {
+        if (el instanceof HTMLElement) el.style.display = 'none';
+    });
+    syncTypewriterStreamBlockVisibility(bufferEl);
+    syncTypewriterStreamCursor(bufferEl);
+
+    const state = streamTypewriterTimers.get(bufferEl) || {
+        timerId: 0,
+        stepMs: resolvedStepMs,
+        effect: resolvedEffect,
+        granularity: String(granularity || 'grapheme'),
+    };
+    state.stepMs = resolvedStepMs;
+    state.effect = resolvedEffect;
+    state.granularity = String(granularity || state.granularity || 'grapheme');
+    streamTypewriterTimers.set(bufferEl, state);
+
+    if (state.timerId) return;
+
+    const tick = () => {
+        state.timerId = 0;
+        if (!bufferEl.isConnected) {
+            streamTypewriterTimers.delete(bufferEl);
+            return;
+        }
+
+        const next = bufferEl.querySelector(`.${STREAM_SEG_CLASS}[${STREAM_SEG_NEW_ATTR}]`);
+        if (!(next instanceof HTMLElement)) return;
+
+        // Ensure containers stay collapsed until their first segment is revealed.
+        let parent = next.parentElement;
+        while (parent && parent !== bufferEl) {
+            if (parent.matches?.('p, li, blockquote, pre, ul, ol')) {
+                parent.style.removeProperty('display');
+                parent.removeAttribute(STREAM_BLOCK_HIDDEN_ATTR);
+            }
+            parent = parent.parentElement;
+        }
+
+        // Place cursor exactly before the next segment to be revealed.
+        bufferEl.querySelectorAll(`.${STREAM_CURSOR_CLASS}`).forEach((el) => el.remove());
+        const messageEl = bufferEl.closest('.mes');
+        const cursorEnabled = Boolean(messageEl instanceof HTMLElement && messageEl.getAttribute(STREAM_CURSOR_ATTR) === '1');
+        if (cursorEnabled) {
+            const cursorEl = document.createElement('span');
+            cursorEl.className = STREAM_CURSOR_CLASS;
+            cursorEl.setAttribute('aria-hidden', 'true');
+            next.parentNode?.insertBefore(cursorEl, next);
+        }
+
+        if (state.effect === 'blur') {
+            next.style.opacity = '0';
+            next.style.filter = 'blur(10px)';
+            next.style.animation = 'nytw-stream-blur-in 320ms cubic-bezier(.2,.8,.2,1) both';
+        } else if (state.effect === 'glow') {
+            next.style.opacity = '0';
+            next.style.textShadow = '0 0 0 rgba(120,180,255,.0)';
+            next.style.animation = 'nytw-stream-glow-in 420ms cubic-bezier(.18,.89,.32,1.05) both';
+        }
+
+        next.style.removeProperty('display');
+        next.removeAttribute(STREAM_SEG_NEW_ATTR);
+
+        const shown = Number(bufferEl.dataset[STREAM_SHOWN_COUNT_DATA]) || 0;
+        const shouldCount = state.granularity === 'grapheme'
+            || next.getAttribute(STREAM_SEG_BR_ATTR) === '1'
+            || Boolean(String(next.textContent || '').trim().length);
+        bufferEl.dataset[STREAM_SHOWN_COUNT_DATA] = String(shown + (shouldCount ? 1 : 0));
+        syncTypewriterStreamBlockVisibility(bufferEl);
+        syncTypewriterStreamCursor(bufferEl);
+
+        state.timerId = setTimeout(tick, state.stepMs);
+    };
+
+    state.timerId = setTimeout(tick, 0);
+}
+
+function processContainerInner(containerEl, { enableTypewriter = true } = {}) {
+    if (!containerEl) return;
+
+    const customFontEnabled = settings.fontsEnabled
+        && settings.customFontWrapEnabled
+        && String(settings.customFont || '').trim().length > 0;
+
+    // Bundle mode: a single regex script wraps the whole message and stores config in data-*.
+    // We then post-process DOM to wrap quotes/custom ranges so the same CSS rules apply.
+    const bundleRoots = Array.from(containerEl.querySelectorAll(BUNDLE_SELECTOR));
+    bundleRoots.forEach(wrapBundleQuotesAndCustom);
+
+    applyDialogueFontToQuotes(containerEl);
+
+    const dialogues = Array.from(containerEl.querySelectorAll(TYPEWRITER_SELECTOR));
+    if (!dialogues.length || !enableTypewriter) {
+        applyCustomIndependentFont(containerEl, {
+            enabled: customFontEnabled,
+            openToken: settings.customFontOpen,
+            closeToken: settings.customFontClose,
+        });
+        applyLocaleFonts(containerEl);
+        return;
+    }
+
+    const restartAnimations = (dialogueEl) => {
+        if (!dialogueEl) return;
+        dialogueEl.style.animation = 'none';
+        void dialogueEl.offsetHeight;
+        dialogueEl.style.animation = '';
+
+        const inner = dialogueEl.firstElementChild;
+        if (!inner) return;
+        inner.style.animation = 'none';
+        void inner.offsetHeight;
+        inner.style.animation = '';
+    };
+
+    let startOffsetMs = 0;
+    for (const dialogueEl of dialogues) {
+        const stepMs = parseTimeToMs(getComputedStyle(dialogueEl).getPropertyValue('--ny-tw-step')) || 20;
+        const startValue = `${Math.max(0, startOffsetMs)}ms`;
+        dialogueEl.style.setProperty('--ny-tw-start', startValue);
+        const { charCount } = ensureProcessed(dialogueEl);
+
+        // Sync other CSS animations (fade-up / blur / stagger / pop-spring) to the chained start offset.
+        // Avoid re-triggering on every scan by caching the last applied start value.
+        if (dialogueEl.getAttribute('data-ny-tw-anim-start') !== startValue) {
+            restartAnimations(dialogueEl);
+            dialogueEl.setAttribute('data-ny-tw-anim-start', startValue);
+        }
+
+        startOffsetMs += charCount * stepMs;
+    }
+
+    applyCustomIndependentFont(containerEl, {
+        enabled: customFontEnabled,
+        openToken: settings.customFontOpen,
+        closeToken: settings.customFontClose,
+    });
+
+    applyLocaleFonts(containerEl);
+}
+
+function processContainer(containerEl) {
+    if (!containerEl || !(containerEl instanceof HTMLElement)) return;
+
+    const messageEl = containerEl.closest?.('.mes');
+    const activeId = getActiveStreamingMessageId();
+    const isActiveStreamingMessage = Boolean(activeId && messageEl?.getAttribute?.('mesid') === activeId);
+    const isStreamingMessage = Boolean(messageEl?.classList?.contains(STREAMING_MESSAGE_CLASS)) || isActiveStreamingMessage;
+
+    if (!isStreamingMessage) {
+        processContainerInner(containerEl);
+        return;
+    }
+
+    // When font overrides are disabled, streaming display settings should not apply
+    // and we should avoid processing the live streaming message content.
+    if (!settings.fontsEnabled) return;
+
+    const mode = getStreamRenderMode();
+    if (mode === 'buffer') {
+        if (!(messageEl instanceof HTMLElement)) return;
+
+        const animEffect = normalizeStreamAnimEffect(settings.streamAnimEffect);
+        if (animEffect !== 'none') {
+            syncStreamingBuffer(messageEl, { animEffect });
+            return;
+        }
+
+        if (containerEl.classList.contains(STREAM_BUFFER_CLASS)) {
+            const bufferEl = syncStreamingBuffer(messageEl) || containerEl;
+            processContainerInner(bufferEl, { enableTypewriter: false });
+            return;
+        }
+
+        const bufferEl = syncStreamingBuffer(messageEl);
+        if (bufferEl) processContainerInner(bufferEl, { enableTypewriter: false });
+    }
+}
+
+function scanAndProcess() {
+    const containers = new Set();
+    document.querySelectorAll(TYPEWRITER_SELECTOR).forEach((el) => {
+        const container = el.closest('.mes_text') || el.parentElement;
+        if (container && !(container instanceof HTMLElement && container.classList.contains(STREAM_BUFFER_CLASS))) {
+            containers.add(container);
+        }
+    });
+
+    document.querySelectorAll(BUNDLE_SELECTOR).forEach((el) => {
+        const container = el.closest('.mes_text') || el.parentElement;
+        if (container && !(container instanceof HTMLElement && container.classList.contains(STREAM_BUFFER_CLASS))) {
+            containers.add(container);
+        }
+    });
+
+    document.querySelectorAll(`[${CUSTOM_INDEPENDENT_FONT_MARK_ATTR}]`).forEach((el) => {
+        const container = el.closest('.mes_text') || el.parentElement;
+        if (container && !(container instanceof HTMLElement && container.classList.contains(STREAM_BUFFER_CLASS))) {
+            containers.add(container);
+        }
+    });
+
+    if (shouldProcessDialogueMarkup()) {
+        document.querySelectorAll(`#chat .mes_text:not(.${STREAM_BUFFER_CLASS})`).forEach((el) => containers.add(el));
+    }
+
+    if (
+        settings.fontsEnabled
+        && settings.customFontWrapEnabled
+        && String(settings.customFont || '').trim()
+        && String(settings.customFontOpen || '').trim()
+        && String(settings.customFontClose || '').trim()
+    ) {
+        document.querySelectorAll(`#chat .mes_text:not(.${STREAM_BUFFER_CLASS})`).forEach((el) => containers.add(el));
+    }
+
+    const hasLocaleMarks = Boolean(document.querySelector(`#chat [${LOCALE_WRAP_ATTR}], #chat [${LOCALE_FONT_ATTR}]`));
+    if (getActiveLocaleFontMap().size || hasLocaleMarks) {
+        document.querySelectorAll(`#chat .mes_text:not(.${STREAM_BUFFER_CLASS})`).forEach((el) => containers.add(el));
+    }
+
+    containers.forEach(processContainer);
+    syncTextAnimationTargets();
+}
+
+/** @type {Set<HTMLElement>} */
+const pendingContainers = new Set();
+/** @type {Set<HTMLElement>} */
+const suppressedContainers = new Set();
+let fullScanRequested = false;
+let scanRafId = 0;
+let suppressMutations = false;
+
+function maybeAddMesTextContainerFromNode(node, outSet) {
+    if (!node || !outSet) return;
+    if (node instanceof HTMLElement) {
+        if (node.matches('.mes_text')) {
+            outSet.add(node);
+            return;
+        }
+
+        const closest = node.closest?.('.mes_text');
+        if (closest) {
+            outSet.add(closest);
+            return;
+        }
+
+        node.querySelectorAll?.('.mes_text').forEach((el) => outSet.add(el));
+        return;
+    }
+    if (node.nodeType === Node.TEXT_NODE) {
+        const parent = node.parentElement;
+        const closest = parent?.closest?.('.mes_text');
+        if (closest) outSet.add(closest);
+    }
+}
+
+function syncStreamingMessageClass() {
+    if (!settings.fontsEnabled) {
+        document.querySelectorAll(`#chat .mes.${STREAMING_MESSAGE_CLASS}`).forEach((el) => {
+            if (!(el instanceof HTMLElement)) return;
+            el.classList.remove(STREAMING_MESSAGE_CLASS);
+            cleanupStreamingBuffer(el);
+        });
+
+        document.querySelectorAll(`#chat .mes[${STREAM_RENDER_ATTR}], #chat .mes[${STREAM_ANIM_ATTR}], #chat .mes[${STREAM_CURSOR_ATTR}], #chat .mes[${STREAM_CURSOR_SHAPE_ATTR}], #chat .mes[${STREAM_CURSOR_ANIM_ATTR}]`).forEach((el) => {
+            if (!(el instanceof HTMLElement)) return;
+            el.classList.remove(STREAMING_MESSAGE_CLASS);
+            cleanupStreamingBuffer(el);
+        });
+        return;
+    }
+
+    const mode = getStreamRenderMode();
+    const animEffect = normalizeStreamAnimEffect(settings.streamAnimEffect);
+    const stepMs = clampStreamAnimSpeed(settings.streamAnimSpeed);
+    const cursorEnabled = animEffect === 'typewriter';
+    const cursorShape = normalizeStreamCursorShape(settings.streamAnimCursorShape);
+    const cursorAnim = normalizeStreamCursorAnim(settings.streamAnimCursorAnim);
+    const cursorImageUrl = normalizeStreamCursorImageUrl(settings.streamAnimCursorImageUrl);
+    const cursorImageCssValue = cursorImageUrl ? `url(${cssQuote(cursorImageUrl)})` : '';
+    const activeId = getActiveStreamingMessageId();
+
+    document.querySelectorAll(`#chat .mes.${STREAMING_MESSAGE_CLASS}`).forEach((el) => {
+        if (!(el instanceof HTMLElement)) return;
+        if (!activeId || el.getAttribute('mesid') !== activeId) {
+            el.classList.remove(STREAMING_MESSAGE_CLASS);
+            cleanupStreamingBuffer(el);
+        }
+    });
+
+    if (!activeId) return;
+
+    const activeEl = document.querySelector(`#chat .mes[mesid="${activeId}"]`);
+    if (activeEl instanceof HTMLElement) {
+        activeEl.classList.add(STREAMING_MESSAGE_CLASS);
+        if (mode === 'buffer') {
+            activeEl.setAttribute(STREAM_RENDER_ATTR, 'buffer');
+            if (animEffect !== 'none') {
+                activeEl.setAttribute(STREAM_ANIM_ATTR, animEffect);
+            } else {
+                activeEl.removeAttribute(STREAM_ANIM_ATTR);
+            }
+            if (cursorEnabled) {
+                activeEl.setAttribute(STREAM_CURSOR_ATTR, '1');
+                activeEl.setAttribute(STREAM_CURSOR_SHAPE_ATTR, cursorShape);
+                activeEl.setAttribute(STREAM_CURSOR_ANIM_ATTR, cursorAnim);
+                if (cursorShape === 'image' && cursorImageCssValue) {
+                    activeEl.style?.setProperty?.(STREAM_CURSOR_IMAGE_VAR, cursorImageCssValue);
+                } else {
+                    activeEl.style?.removeProperty?.(STREAM_CURSOR_IMAGE_VAR);
+                }
+            } else {
+                activeEl.removeAttribute(STREAM_CURSOR_ATTR);
+                activeEl.removeAttribute(STREAM_CURSOR_SHAPE_ATTR);
+                activeEl.removeAttribute(STREAM_CURSOR_ANIM_ATTR);
+                activeEl.style?.removeProperty?.(STREAM_CURSOR_IMAGE_VAR);
+            }
+            activeEl.style?.setProperty?.(STREAM_STEP_VAR, `${stepMs}ms`);
+
+            syncStreamingBuffer(activeEl, { animEffect });
+        } else {
+            cleanupStreamingBuffer(activeEl);
+        }
+    }
+}
+
+function flushScan() {
+    scanRafId = 0;
+    scheduleParagraphRewrite();
+
+    suppressMutations = true;
+    try {
+        syncStreamingMessageClass();
+
+        if (fullScanRequested) {
+            fullScanRequested = false;
+            pendingContainers.clear();
+            scanAndProcess();
+            return;
+        }
+
+        if (!pendingContainers.size) return;
+        const containers = Array.from(pendingContainers);
+        pendingContainers.clear();
+        containers.forEach(processContainer);
+        if (!getActiveStreamingMessageId()) syncTextAnimationTargets();
+    } finally {
+        queueMicrotask(() => {
+            suppressMutations = false;
+            if (!suppressedContainers.size) return;
+
+            const containers = Array.from(suppressedContainers).filter((el) => el?.isConnected);
+            suppressedContainers.clear();
+
+            if (containers.length) {
+                scheduleScan({ full: false, containers });
+            } else {
+                scheduleScan({ full: true });
+            }
+        });
+    }
+}
+
+function scheduleScan({ full = true, containers = null } = {}) {
+    if (full) fullScanRequested = true;
+    if (containers) {
+        for (const el of containers) {
+            if (el instanceof HTMLElement) pendingContainers.add(el);
+        }
+    }
+
+    if (scanRafId) return;
+    scanRafId = requestAnimationFrame(flushScan);
+}
+
+scheduleScan();
+
+const observer = new MutationObserver((mutations) => {
+    const containers = new Set();
+    for (const m of mutations) {
+        maybeAddMesTextContainerFromNode(m.target, containers);
+        m.addedNodes?.forEach((n) => maybeAddMesTextContainerFromNode(n, containers));
+    }
+
+    if (containers.size) {
+        if (suppressMutations) {
+            containers.forEach((el) => {
+                if (el instanceof HTMLElement && el.isConnected) suppressedContainers.add(el);
+            });
+            return;
+        }
+
+        scheduleScan({ full: false, containers });
+    }
+});
+observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+// Keep streaming state in sync and ensure a final scan after streaming ends.
+try {
+    eventSource?.on?.(event_types.STREAM_TOKEN_RECEIVED, () => {
+        const el = streamingProcessor?.messageTextDom;
+        if (el instanceof HTMLElement) scheduleScan({ full: false, containers: [el] });
+    });
+    eventSource?.on?.(event_types.GENERATION_STARTED, () => scheduleScan({ full: false }));
+    eventSource?.on?.(event_types.GENERATION_STOPPED, () => scheduleScan({ full: true }));
+    eventSource?.on?.(event_types.GENERATION_ENDED, () => scheduleScan({ full: true }));
+} catch { /* no-op */ }
+
+queueApplyFonts();
+
+export function applyParagraphRewriteNow() {
+    try {
+        return applyParagraphRewrite();
+    } catch (error) {
+        console.warn('[NyTW] paragraph rewrite failed', error);
+        return { messages: 0, withBr: 0, created: 0 };
+    }
+}
+
+export { applyTypographyVariables, queueApplyFonts, scheduleScan };

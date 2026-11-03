@@ -1,0 +1,3631 @@
+/* Ny Typewriter Settings Styles - Refined Dark Theme */
+
+/* --- Container & Layout --- */
+
+.nytw-settings-container {
+    display: flex;
+    gap: 0; /* 紧凑布局，消除间隙 */
+    /* height: 500px; */
+    height: auto;
+    min-height: 300px;
+    max-height: 580px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    overflow: hidden; /* 防止圆角溢出 */
+    border: 1px solid rgba(127, 127, 127, 0.15);
+    font-family: sans-serif; /* Ensure base font is clean */
+}
+
+/* --- Sidebar (Left Navigation) --- */
+
+.nytw-sidebar {
+    width: 40px; /* 窄侧边栏 */
+    background: rgba(0, 0, 0, 0.3);
+    border-right: 1px solid rgba(127, 127, 127, 0.1);
+    display: flex;
+    flex-direction: column;
+    padding-top: 10px;
+    flex-shrink: 0;
+}
+
+.nytw-tab-item {
+    writing-mode: vertical-lr; /* 竖排文字 */
+    text-orientation: mixed;
+    padding: 15px 8px; /* 增加点击区域 */
+    cursor: pointer;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.75);
+    transition: all 0.2s;
+    letter-spacing: 2px;
+    border-left: 3px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    white-space: nowrap; /* 强制不换行，防止动画过程中布局错乱 */
+}
+
+.nytw-tab-item:hover {
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nytw-tab-item.active {
+    color: #fff;
+    border-left-color: var(--smart-theme-color, #a8a8a8); /* 使用主题色或默认灰白 */
+    background: rgba(255, 255, 255, 0.08);
+    font-weight: 600;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+}
+
+/* Display Settings tab: only visible when "字体覆盖" is enabled */
+.nytw-tab-item--display {
+    max-height: 120px;
+    overflow: hidden;
+    opacity: 1;
+    transform: translateY(0);
+    /* 优化：移除 all，指定具体属性。增加 opacity 延迟(0.15s)，等待高度撑开后再显示文字，彻底解决横版闪烁问题 */
+    transition: max-height 0.35s ease, padding 0.35s ease, opacity 0.2s ease 0.15s, transform 0.35s ease, background-color 0.2s, color 0.2s;
+    will-change: max-height, padding, opacity, transform;
+}
+
+.nytw-tab-item--display.is-collapsed {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    /* 保留左右 padding 以维持宽度布局稳定性，防止横竖排重排 */
+    /* padding: 0; */ 
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+    /* 收起时 opacity 立即消失，无需 delay */
+    transition: max-height 0.35s ease, padding 0.35s ease, opacity 0.1s ease 0s, transform 0.35s ease, background-color 0.2s, color 0.2s;
+}
+
+/* 字体设置按钮的联动动画 */
+@keyframes nytw-tab-pulse {
+    0% { background-color: rgba(255, 255, 255, 0.05); }
+    50% { background-color: rgba(255, 255, 255, 0.15); text-shadow: 0 0 8px rgba(255, 255, 255, 0.4); }
+    100% { background-color: rgba(255, 255, 255, 0.05); }
+}
+
+.nytw-tab-anim {
+    animation: nytw-tab-pulse 0.5s ease-in-out;
+}
+
+
+/* --- Content Area (Right Panel) --- */
+
+.nytw-content-area {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    background: rgba(30, 30, 30, 0.4); /* 深色半透明背景 */
+    position: relative;
+}
+
+.nytw-tab-pane {
+    display: none;
+    flex-direction: column;
+    gap: 8px; /* 紧凑间距 */
+    animation: nytw-fade-in 0.2s ease-out;
+}
+
+.nytw-tab-pane.active {
+    display: flex;
+}
+
+@keyframes nytw-fade-in {
+    from { opacity: 0; transform: translateY(2px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Rows & Inputs (Compact Design) --- */
+
+.nytw-settings-container .nytw-row {
+    display: flex; /* Flex is better for compact/adaptive than grid here */
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(127, 127, 127, 0.1);
+    border-radius: 4px; /* 小圆角 */
+    transition: background 0.2s;
+    position: relative;
+}
+
+.nytw-settings-container .nytw-row:focus-within {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(127, 127, 127, 0.3);
+}
+
+.nytw-settings-container .nytw-label {
+    width: 60px; /* 固定 Label 宽度 */
+    font-size: 12px;
+    opacity: 0.95;
+    white-space: nowrap;
+    text-align: right;
+    margin-right: 5px;
+    font-weight: 500;
+}
+
+.nytw-settings-container .nytw-input {
+    flex: 1;
+    height: 28px; /* 更矮的输入框 */
+    font-size: 13px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(127, 127, 127, 0.2);
+    border-radius: 3px;
+    padding: 0 6px;
+    color: #eee;
+}
+
+.nytw-settings-container .nytw-input:focus {
+    border-color: var(--smart-theme-color, #aaa);
+    outline: none;
+}
+
+/* --- Font Override Group (Global/Body/Dialogue) --- */
+
+.nytw-font-overrides {
+    margin: 2px 0 8px;
+    padding: 6px;
+    border: 1px solid rgba(127, 127, 127, 0.18);
+    border-radius: 10px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.nytw-settings-container .nytw-row.nytw-row--font-override {
+    position: relative;
+    gap: 10px;
+    margin-top: 0;
+    padding: 7px 8px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.nytw-settings-container .nytw-row.nytw-row--font-override + .nytw-row.nytw-row--font-override::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 8px;
+    right: 8px;
+    height: 1px;
+    background: rgba(127, 127, 127, 0.2);
+}
+
+.nytw-settings-container .nytw-row.nytw-row--font-override:focus-within {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(127, 127, 127, 0.24);
+}
+
+.nytw-settings-container .nytw-row.nytw-row--font-override .nytw-label {
+    width: 66px;
+    margin-right: 2px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(196, 222, 255, 0.9);
+}
+
+.nytw-settings-container .nytw-row.nytw-row--font-override .nytw-input {
+    height: 30px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.32);
+    border: 1px solid rgba(127, 127, 127, 0.22);
+}
+
+.nytw-settings-container .nytw-row.nytw-row--font-override .nytw-input:focus {
+    border-color: rgba(188, 214, 255, 0.75);
+    box-shadow: 0 0 0 1px rgba(188, 214, 255, 0.2);
+}
+
+.nytw-settings-container .nytw-row.nytw-row--font-override .nytw-icon-button {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    opacity: 0.35;
+}
+
+.nytw-settings-container .nytw-row.nytw-row--font-override .nytw-icon-button:hover {
+    opacity: 0.95;
+    background: rgba(255, 90, 90, 0.16);
+}
+
+.nytw-input::placeholder,
+.nytw-token::placeholder {
+    color: #cccccc; /* 浅灰色 */
+    opacity: 0.5;   /* 50% 透明度 */
+    font-style: italic;
+    font-size: 12px;
+}
+
+/* --- Input Wrapper & Custom Popup (Bubble) --- */
+
+.nytw-input-wrapper {
+    flex: 1;
+    position: relative;
+    display: flex;
+}
+
+/* 气泡选择框 */
+.nytw-font-picker-popup {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 5px;
+    z-index: 100;
+    
+    background: rgba(40, 40, 40, 0.85); /* 稍微深一点的背景 */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    
+    max-height: 200px;
+    overflow-y: auto;
+    
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-5px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+}
+
+.nytw-font-picker-popup.is-open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.nytw-font-option {
+    padding: 6px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.8);
+    transition: background 0.15s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nytw-font-option:hover, .nytw-font-option.is-focused {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.nytw-font-option-sub {
+    font-size: 11px;
+    opacity: 0.5;
+    margin-left: 8px;
+}
+
+.nytw-font-group-header {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.4);
+    padding: 6px 10px 2px;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    user-select: none;
+}
+
+.nytw-font-group-header:first-child {
+    margin-top: 0;
+    border-top: none;
+    padding-top: 4px;
+}
+
+/* Scrollbar for popup */
+.nytw-font-picker-popup::-webkit-scrollbar {
+    width: 4px;
+}
+.nytw-font-picker-popup::-webkit-scrollbar-track {
+    background: transparent;
+}
+.nytw-font-picker-popup::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+/* --- Buttons --- */
+
+.nytw-icon-button {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    opacity: 0.5;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.nytw-icon-button:hover {
+    opacity: 1;
+    background: rgba(200, 50, 50, 0.2); /* 红色警示背景 */
+    color: #ff6b6b;
+}
+
+.nytw-settings-container .menu_button {
+    /* 继承全局样式但微调 */
+    padding: 4px 12px;
+    height: 30px;
+    font-size: 13px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* --- Custom Font Wrap Toggle & Main Toggle --- */
+
+.nytw-row--disclosure {
+    margin-top: 5px;
+    cursor: pointer;
+    justify-content: flex-start;
+}
+
+.nytw-disclosure-label {
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    flex: 1;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.nytw-disclosure-icon {
+    font-size: 10px;
+    opacity: 0.7;
+    transition: transform 0.2s;
+}
+
+/* Active state for disclosure rows */
+.nytw-row--disclosure.is-open {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.nytw-row--disclosure.is-open .nytw-disclosure-icon {
+    transform: rotate(90deg);
+}
+
+/* Main Toggle Special Styling */
+.nytw-main-toggle {
+    padding: 10px 10px; /* Slightly taller */
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(127, 127, 127, 0.2);
+    border-radius: 6px;
+    margin-bottom: 5px;
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    user-select: none;
+    overflow: hidden;
+}
+
+.nytw-main-toggle:hover {
+    background: rgba(0, 0, 0, 0.1);
+    border-color: rgba(0, 0, 0, 0.3);
+}
+
+.nytw-main-toggle .nytw-disclosure-label {
+    font-size: 14px; /* Larger text */
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.95);
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), color 0.2s;
+}
+
+.nytw-main-toggle .nytw-disclosure-icon {
+    font-size: 12px;
+    margin-right: 4px;
+}
+
+.nytw-main-toggle.is-open {
+    background: rgba(160, 160, 160, 0.15); /* Grayish background to reduce brightness */
+    border-color: transparent;
+    border-radius: 24px;
+    animation: nytw-breathe-glow 9s infinite ease-in-out; /* Slower breathing (1/3 speed) */
+}
+
+.nytw-main-toggle.is-open .nytw-disclosure-label {
+    color: #fff;
+    transform: translateX(calc(35% - 2em));
+}
+
+@keyframes nytw-breathe-glow {
+    0%, 100% {
+        box-shadow: 0 0 4px rgba(255, 255, 255, 0.1);
+    }
+    50% {
+        box-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
+    }
+}
+
+/* --- Collapsible Panel --- */
+
+.nytw-collapsible {
+    border: 1px solid rgba(127, 127, 127, 0.1);
+    border-top: none;
+    background: rgba(0, 0, 0, 0.15);
+    margin-top: -1px; /* 连接 Toggle */
+    border-radius: 0 0 4px 4px;
+    padding: 0 10px;
+    
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.2s, padding 0.3s, overflow 0s 0s;
+}
+
+.nytw-collapsible.is-open {
+    max-height: 2000px; /* Increased to accommodate longer lists */
+    opacity: 1;
+    padding: 10px; /* 展开后的 Padding */
+    overflow: visible; /* 允许内部气泡溢出 */
+    transition: max-height 0.4s ease, opacity 0.2s, padding 0.3s, overflow 0s 0.3s;
+}
+
+/* Nested collapsible fix: if we have nested panels, we need to handle overflow carefully.
+   However, for the font popups to show outside, we need overflow visible on parent.
+   But transition requires hidden.
+   
+   Solution: After transition ends, set overflow to visible (handled in JS usually, or use a large max-height).
+   For simple CSS: 
+*/
+.nytw-collapsible.is-open {
+   overflow: visible; 
+}
+/* Wait, transition max-height requires overflow hidden during transition. 
+   If we set overflow visible immediately, the animation breaks. 
+   Usually we need a JS event listener 'transitionend' to set overflow visible.
+   Or we can use z-index hacks.
+   
+   Actually, the popup is position:absolute inside a relative wrapper. 
+   If the wrapper is inside an overflow:hidden container, the popup will be clipped.
+   
+   Let's try to keep overflow visible for open state, but we might lose the smooth height animation partially if not careful.
+   Actually, for the "Drawer" effect, we want the drawer to slide out.
+   
+   Let's use a slightly different approach for the collapsibles that contain popups.
+*/
+
+/* --- Nested Rows --- */
+
+.nytw-settings-container .nytw-row.nytw-row--nested {
+    border: none;
+    background: transparent;
+    padding: 4px 0;
+}
+.nytw-settings-container .nytw-row.nytw-row--nested .nytw-label {
+    opacity: 0.85;
+}
+
+/* --- Multi-Input (Symbols) --- */
+
+.nytw-multi-input-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.nytw-token {
+    flex: 1;
+    min-width: 40px;
+    text-align: center;
+}
+
+.nytw-arrow {
+    font-size: 12px;
+    opacity: 0.5;
+}
+
+/* --- Help Text --- */
+
+.nytw-core-help-wrapper {
+    margin-bottom: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.nytw-core-help-wrapper .nytw-row--disclosure {
+    background: rgba(255, 255, 255, 0.03);
+    margin-top: 0;
+    border: none;
+    border-radius: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 10px 12px;
+}
+
+.nytw-core-help-wrapper .nytw-disclosure-label {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.nytw-core-title {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, #fff, #bbb);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.nytw-core-help-wrapper .nytw-collapsible {
+    background: transparent;
+    border: none;
+    margin-top: 0;
+    padding: 0;
+}
+
+.nytw-help--core {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 15px;
+    font-size: 13px;
+    line-height: 1.7;
+    margin: 0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.nytw-help--core strong {
+    color: #fff;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0 4px;
+    border-radius: 3px;
+    margin: 0 2px;
+}
+
+.nytw-help--core i {
+    color: rgba(255, 255, 255, 0.8);
+    margin-right: 4px;
+}
+
+.nytw-help {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.45);
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.15);
+    border-left: 3px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0 4px 4px 0;
+    line-height: 1.4;
+    font-style: italic;
+    margin-top: 4px;
+}
+.nytw-help code {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0 3px;
+    border-radius: 2px;
+    font-family: monospace;
+}
+
+/* --- Import Section --- */
+
+.nytw-section-title {
+    font-size: 12px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 10px 0 4px 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.nytw-section-title:first-child {
+    margin-top: 0;
+}
+
+.nytw-import-actions-row {
+    justify-content: center;
+    padding: 6px 0 !important;
+    margin-top: 5px;
+    background: transparent !important;
+    border: none !important;
+}
+
+.nytw-import-actions-row .nytw-dashed-btn {
+    height: 30px;
+    font-size: 12px;
+}
+
+.nytw-imported-fonts {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.nytw-font-config-tools {
+    margin-top: 8px;
+    padding: 8px;
+    border: 1px solid rgba(127, 127, 127, 0.14);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.16);
+}
+
+.nytw-font-config-tools .nytw-section-title {
+    margin-top: 0;
+}
+
+.nytw-help--compact {
+    margin: 4px 0 8px;
+    font-size: 11px;
+}
+
+.nytw-config-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.nytw-config-actions .menu_button {
+    flex: 1;
+    min-width: 120px;
+    justify-content: center;
+}
+
+.nytw-font-row {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(127, 127, 127, 0.1);
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column; /* 垂直排列 */
+    gap: 8px;
+}
+
+.nytw-font-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.nytw-font-meta {
+    flex: 1;
+    overflow: hidden;
+    margin-right: 10px;
+}
+
+.nytw-font-actions {
+    display: flex;
+    flex-wrap: wrap; /* 允许换行 */
+    gap: 6px;
+    width: 100%;
+}
+
+.nytw-font-actions .menu_button {
+    flex: 1; /* 均分宽度 */
+    min-width: 80px; /* 最小宽度，防止太窄 */
+    text-align: center;
+    justify-content: center;
+}
+
+/* Specific styling for delete button in header */
+.nytw-font-delete {
+    height: 24px;
+    padding: 0 8px;
+    font-size: 11px;
+    background: transparent;
+    color: #ff8888;
+    border: 1px solid rgba(200, 50, 50, 0.3);
+    opacity: 0.6;
+}
+.nytw-font-delete:hover {
+    background: rgba(200, 50, 50, 0.2);
+    opacity: 1;
+}
+
+.nytw-font-name {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nytw-font-sub {
+    font-size: 11px;
+    opacity: 0.5;
+    margin-top: 2px;
+}
+
+/* Scrollbar styling for content area */
+.nytw-content-area::-webkit-scrollbar {
+    width: 6px;
+}
+.nytw-content-area::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.1);
+}
+.nytw-content-area::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+}
+.nytw-content-area::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+/* --- Specific Overrides --- */
+
+/* Reduce whitespace for Import Tab items (Left shift) */
+#nytw_tab_import .nytw-row {
+    padding-left: 0px;
+}
+
+/* Exception: The main toggle in Import tab should have standard padding */
+#nytw_tab_import .nytw-row.nytw-main-toggle {
+    padding-left: 10px;
+}
+
+#nytw_tab_import .nytw-label {
+    width: 40px;
+}
+
+/* --- Import Button Animation --- */
+
+@keyframes nytw-import-glow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+        border-color: rgba(127, 127, 127, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+        border-color: rgba(255, 255, 255, 0.8);
+    }
+}
+
+.nytw-import-ready {
+    animation: nytw-import-glow 3s infinite ease-in-out !important;
+    transition: all 0.3s;
+    color: #fff !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Specific centering alignment for "Imported Fonts" toggle */
+#nytw_imported_fonts_toggle.is-open .nytw-disclosure-label {
+    transform: translateX(calc(50% - 3.5em));
+}
+
+/* Override for imported fonts panel to allow internal scrolling if list is very long */
+#nytw_imported_fonts_panel {
+    /* Ensure it behaves like other collapsibles when closed (hidden) */
+    overflow: hidden !important;
+}
+
+/* Locale List Specific */
+.nytw-locale-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.nytw-locale-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 3px 4px 3px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(127, 127, 127, 0.15);
+    transition: background 0.2s, z-index 0s;
+    z-index: 1;
+}
+
+.nytw-locale-row:focus-within {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(127, 127, 127, 0.3);
+    z-index: 10; /* Ensure popup floats above other rows */
+}
+
+/* 语言选择部分 */
+.nytw-locale-select-wrapper {
+    flex: 0 0 100px; /* 稍微宽一点，显示更多文字 */
+    width: 100px;
+    min-width: 0;
+}
+
+.nytw-locale-trigger {
+    cursor: pointer;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    padding-right: 15px; /* Leave space for imaginary arrow if needed, though clean looks better */
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.nytw-locale-trigger:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nytw-locale-row .nytw-input-wrapper {
+    /* Right side (font input) expands */
+    flex: 1;
+    min-width: 0; 
+}
+
+/* Customized input for locale row to fit better */
+.nytw-locale-row .nytw-input {
+    width: 100%;
+    height: 26px;
+    font-size: 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: 1px solid rgba(127, 127, 127, 0.2);
+    border-radius: 0;
+    padding: 0 5px;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+
+.nytw-locale-row .nytw-input:focus,
+.nytw-locale-row .nytw-input:hover {
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom-color: rgba(255, 255, 255, 0.5);
+}
+
+.nytw-locale-delete {
+    width: 24px;
+    height: 26px;
+    opacity: 0.4;
+    background: transparent;
+    border: none;
+    color: #ff6b6b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    transition: all 0.2s;
+}
+.nytw-locale-delete:hover {
+    opacity: 1;
+    background: rgba(200, 50, 50, 0.15);
+}
+
+/* Ensure popup within locale row behaves well */
+.nytw-locale-row .nytw-font-picker-popup {
+    top: 100%;
+    margin-top: 2px;
+}
+
+/* When open, allow scrolling (after animation delay inherited from class) */
+#nytw_imported_fonts_panel.is-open {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+/* --- Add Locale Button (Dashed Design) --- */
+
+.nytw-add-locale-row {
+    justify-content: center; /* Center the button */
+    padding: 6px 0 !important; /* Reduced padding */
+    margin-top: 4px;
+    background: transparent !important;
+}
+
+.nytw-dashed-btn {
+    /* 方案 3：全宽超薄分割线型 */
+    width: 100%;            /* 全宽 */
+    height: 24px;           /* 极矮，像分割线 */
+    background: transparent;
+    border: 1px dashed rgba(255, 255, 255, 0.15); /* 极淡的边框 */
+    border-radius: 4px;     /* 小圆角 */
+    color: rgba(255, 255, 255, 0.35); /* 极淡的文字 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    font-size: 11px;        /* 更小的字号 */
+    cursor: pointer;
+    padding: 0;
+}
+
+.nytw-dashed-btn:hover {
+    border-color: rgba(255, 255, 255, 0.35);
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.nytw-dashed-btn:active {
+    transform: translateY(0);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nytw-dashed-btn i {
+    font-size: 12px;
+}
+
+/* --- Importer Toggle & Flowing Border Animation --- */
+
+.nytw-importer-toggle {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Overwrite common open styles for this specific toggle */
+.nytw-importer-toggle.is-open {
+    background: rgba(255, 255, 255, 0.08); /* 恢复为原来的深色半透明背景 */
+    animation: none; /* 移除呼吸灯 */
+    border-radius: 6px; /* 保持较小的圆角，不要变成椭圆 */
+    border-color: transparent; /* 边框透明，让流光显示 */
+}
+
+.nytw-importer-toggle {
+    transition: background 0.4s ease, border-color 0.4s ease;
+}
+
+/* Cancel text transform centering */
+.nytw-importer-toggle.is-open .nytw-disclosure-label {
+    transform: none; /* 保持左对齐 */
+    color: rgba(255, 255, 255, 0.95); /* 亮白色文字 */
+    justify-content: center; /* 可以在这里让内容居中，如果需要 */
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.4); /* 柔和的白色光晕 */
+}
+
+.nytw-importer-toggle .nytw-disclosure-label {
+    transition: color 0.4s ease, text-shadow 0.4s ease, transform 0.4s ease;
+}
+
+/* Running Icon Styling */
+.nytw-icon-stack {
+    position: relative;
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nytw-static-icon {
+    position: absolute;
+    transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+    opacity: 0.7;
+    transform: scale(1) rotate(0deg);
+}
+
+.nytw-running-icon-wrapper {
+    position: absolute;
+    transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+    opacity: 0;
+    transform: scale(0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nytw-running-icon {
+    font-size: 14px;
+    color: #ffffff; /* 纯白色 */
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.6)); /* 白色发光 */
+    opacity: 0.95;
+    /* fa-spin is handled by fontawesome class */
+}
+
+/* Open state icon transitions */
+.nytw-importer-toggle.is-open .nytw-static-icon {
+    opacity: 0;
+    transform: scale(0.5) rotate(90deg);
+}
+
+.nytw-importer-toggle.is-open .nytw-running-icon-wrapper {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Flowing Border Animations */
+.nytw-border-anim {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+}
+
+.nytw-importer-toggle.is-open .nytw-border-anim {
+    opacity: 1;
+}
+
+.nytw-border-anim.top {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0) 50%, #ffffff 100%);
+    animation: nytw-flow-top 4s linear infinite;
+    box-shadow: 0 0 3px rgba(255, 255, 255, 0.4);
+}
+
+.nytw-border-anim.right {
+    top: 0;
+    right: 0;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0) 50%, #ffffff 100%);
+    animation: nytw-flow-right 4s linear infinite;
+    animation-delay: 1s;
+    box-shadow: 0 0 3px rgba(255, 255, 255, 0.4);
+}
+
+.nytw-border-anim.bottom {
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(270deg, transparent 0%, rgba(255, 255, 255, 0) 50%, #ffffff 100%);
+    animation: nytw-flow-bottom 4s linear infinite;
+    animation-delay: 2s;
+    box-shadow: 0 0 3px rgba(255, 255, 255, 0.4);
+}
+
+.nytw-border-anim.left {
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(360deg, transparent 0%, rgba(255, 255, 255, 0) 50%, #ffffff 100%);
+    animation: nytw-flow-left 4s linear infinite;
+    animation-delay: 3s;
+    box-shadow: 0 0 3px rgba(255, 255, 255, 0.4);
+}
+
+/* Keyframes for sliding gradients */
+/* Note: Since we use gradients, we just need to move the element or the background.
+   Moving the element from -100% to 100% is the standard way.
+*/
+
+@keyframes nytw-flow-top {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+@keyframes nytw-flow-right {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+}
+@keyframes nytw-flow-bottom {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+}
+@keyframes nytw-flow-left {
+    0% { transform: translateY(100%); }
+    100% { transform: translateY(-100%); }
+}
+
+/* --- Display Settings Redesign --- */
+
+.nytw-display-setting-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(127, 127, 127, 0.1);
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    align-self: stretch;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s, border-color 0.3s, padding 0.3s, gap 0.3s;
+}
+
+.nytw-display-setting-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(127, 127, 127, 0.2);
+}
+
+.nytw-display-setting-card.is-collapsed,
+.nytw-display-setting-card.is-collapsed:hover {
+    background: transparent;
+    border-color: transparent;
+    padding-bottom: 0;
+    gap: 0;
+    overflow: visible;
+}
+
+/* 折叠时移除 Header 的底部边距，使高度更紧凑 */
+.nytw-display-setting-card.is-collapsed .nytw-card-header {
+    margin-bottom: 0;
+}
+
+.nytw-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 5px;
+}
+
+.nytw-card-header.nytw-card-toggle {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+    padding: 6px 8px; /* Slightly larger clickable area */
+    margin: -6px -8px 5px; /* Negative margin to offset padding */
+    border-radius: 6px;
+}
+
+.nytw-card-header.nytw-card-toggle:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nytw-card-chevron {
+    margin-left: auto;
+    font-size: 12px;
+    opacity: 0.5;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nytw-display-setting-card.is-collapsed .nytw-card-chevron {
+    transform: rotate(-90deg);
+}
+
+.nytw-card-content {
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    max-height: 1000px; /* Arbitrary large value */
+    opacity: 1;
+}
+
+#nytw_typography_card:not(.is-collapsed) .nytw-card-content {
+    max-height: none;
+    overflow: visible;
+}
+
+#nytw_text_anim_card:not(.is-collapsed) .nytw-card-content {
+    max-height: none;
+    overflow: visible;
+}
+
+.nytw-display-setting-card.is-collapsed .nytw-card-content {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.nytw-display-setting-card.is-collapsed .nytw-card-desc {
+    opacity: 0.3;
+}
+
+.nytw-card-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.nytw-card-info {
+    flex: 1;
+}
+
+.nytw-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+    margin-bottom: 2px;
+}
+
+.nytw-card-desc {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* 两个折叠卡片之间的分割线 */
+.nytw-display-setting-card + .nytw-display-setting-card::before {
+    content: "";
+    position: absolute;
+    top: -5px; /* 位于 8px 间隙的中间 */
+    left: 10px;
+    right: 10px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.nytw-display-setting-card.is-collapsed + .nytw-display-setting-card.is-collapsed::before {
+    opacity: 1;
+}
+
+/* Segmented Control */
+.nytw-segmented-control {
+    display: flex;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+}
+
+.nytw-segment-option {
+    flex: 1;
+    text-align: center;
+    padding: 8px 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    border-radius: 4px;
+    position: relative;
+    z-index: 2;
+    transition: color 0.3s;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.nytw-segment-option:hover {
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.nytw-segment-option.active {
+    color: #fff;
+    background: linear-gradient(90deg, rgba(100, 149, 237, 0.2), rgba(100, 149, 237, 0.1)); /* 统一浅蓝色 */
+    border: 1px solid rgba(100, 149, 237, 0.3);
+    text-shadow: 0 0 5px rgba(100, 149, 237, 0.5);
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    animation: nytw-segment-breathe 3s infinite ease-in-out; /* 呼吸效果 */
+}
+
+.nytw-segment-option i {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+@keyframes nytw-segment-breathe {
+    0%, 100% {
+        box-shadow: 0 0 2px rgba(100, 149, 237, 0.2);
+        border-color: rgba(100, 149, 237, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 10px rgba(100, 149, 237, 0.5);
+        border-color: rgba(100, 149, 237, 0.8);
+    }
+}
+
+/* Small variant for internal controls */
+.nytw-segmented-control--small {
+    padding: 2px;
+    background: rgba(0, 0, 0, 0.2);
+    border: none;
+}
+
+.nytw-segmented-control--small .nytw-segment-option {
+    padding: 3px 0;
+    font-size: 11px;
+}
+
+/* --- Display Settings: Stream Animation Section --- */
+
+#nytw_stream_anim_section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Match inner section gap or parent gap */
+    
+    max-height: 500px;
+    opacity: 1;
+    overflow: hidden;
+    transform-origin: top;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.3s ease 0.1s,
+                margin 0.3s ease,
+                gap 0.3s ease;
+}
+
+#nytw_stream_anim_section.is-disabled {
+    max-height: 0;
+    opacity: 0;
+    margin: 0;
+    gap: 0;
+    pointer-events: none;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.2s ease,
+                margin 0.3s ease,
+                gap 0.3s ease;
+}
+
+.nytw-card-divider {
+    height: 1px;
+    width: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.10), transparent);
+    opacity: 0.8;
+}
+
+.nytw-card-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.nytw-card-section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.nytw-card-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.nytw-card-section-title i {
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+.nytw-card-section-desc {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.nytw-card-section-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nytw-card-section-body.is-disabled {
+    opacity: 0.55;
+    filter: saturate(0.8);
+    pointer-events: none;
+}
+
+.nytw-mini-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid rgba(127, 127, 127, 0.10);
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 6px;
+}
+
+.nytw-mini-label {
+    width: 60px;
+    text-align: right;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.75);
+    flex-shrink: 0;
+}
+
+.nytw-mini-select {
+    flex: 1;
+    height: 28px;
+    font-size: 12px;
+    font-family: inherit;
+    color: rgba(255, 255, 255, 0.92);
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 5px;
+    padding: 0 10px;
+    outline: none;
+}
+
+.nytw-mini-select:focus {
+    border-color: rgba(100, 149, 237, 0.45);
+    box-shadow: 0 0 0 2px rgba(100, 149, 237, 0.12);
+}
+
+.nytw-mini-inline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.nytw-mini-inline input[type="range"] {
+    flex: 1;
+    accent-color: rgba(100, 149, 237, 0.9);
+}
+
+.nytw-mini-value {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.65);
+    min-width: 62px;
+    text-align: right;
+}
+
+.nytw-stream-anim-hint {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+    padding: 0 2px;
+}
+
+/* --- Display Settings: Typography Section --- */
+
+.nytw-typo-row {
+    display: grid;
+    grid-template-columns: 65px 1fr 1fr;
+    gap: 10px;
+    align-items: center;
+
+    padding: 8px 10px;
+    border: 1px solid rgba(127, 127, 127, 0.10);
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 6px;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.nytw-typo-row--line-height .nytw-stepper--line-height {
+    grid-column: 2 / 4;
+}
+
+.nytw-typo-row:not(.nytw-typo-head):hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.nytw-typo-row.nytw-typo-head {
+    padding: 0 10px;
+    border: none;
+    background: transparent;
+    opacity: 0.9;
+    margin-bottom: 2px;
+}
+
+.nytw-typo-row.nytw-typo-head > div {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.nytw-typo-type {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: nowrap;
+}
+
+.nytw-typo-type i {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    width: 14px;
+    text-align: center;
+}
+
+.nytw-typo-input {
+    width: 100%;
+    height: 28px;
+    font-size: 12px;
+    font-family: inherit;
+    padding: 0 10px;
+    text-align: left;
+    outline: none;
+    box-sizing: border-box;
+    -moz-appearance: textfield;
+}
+
+.nytw-typo-input::-webkit-inner-spin-button, 
+.nytw-typo-input::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+
+/* Stepper Styles */
+.nytw-stepper {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    height: auto;
+    overflow: visible;
+    box-shadow: none;
+}
+
+.nytw-stepper:hover, .nytw-stepper:focus-within {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.nytw-stepper:focus-within {
+    border-color: var(--smart-theme-color, #6495ed);
+    box-shadow: 0 0 0 1px var(--smart-theme-color, #6495ed);
+}
+
+.nytw-stepper-btn {
+    width: 22px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: rgba(127, 127, 127, 0.9);
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease;
+    font-size: 9px;
+    flex: 0 0 auto;
+}
+
+.nytw-stepper-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.nytw-stepper-btn:active {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(0.95);
+}
+
+.nytw-stepper-btn:hover {
+    background: rgba(127, 127, 127, 0.16);
+}
+
+.nytw-stepper .nytw-typo-input {
+    flex: 1 1 auto;
+    min-width: 0 !important;
+    width: auto !important;
+    height: 28px !important;
+    padding: 0 10px !important;
+}
+
+.nytw-stepper .nytw-stepper-btn {
+    flex: 0 0 24px;
+    width: 24px;
+    height: 100%;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+}
+
+.nytw-stepper .nytw-stepper-btn.minus {
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.nytw-stepper .nytw-stepper-btn.plus {
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Reading style controls */
+.nytw-reading-style-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.nytw-reading-subcard {
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid rgba(127, 127, 127, 0.12);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.16);
+}
+
+.nytw-reading-subcard-toggle {
+    width: 100%;
+    min-height: 38px;
+    padding: 9px 10px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: rgba(255, 255, 255, 0.92);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    box-sizing: border-box;
+}
+
+.nytw-reading-subcard-toggle:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nytw-reading-subcard-toggle .nytw-card-section-title {
+    min-width: 0;
+}
+
+.nytw-reading-subcard-chevron {
+    flex: 0 0 auto;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.55);
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.nytw-reading-subcard:not(.is-collapsed) .nytw-reading-subcard-chevron {
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.nytw-reading-subcard.is-collapsed .nytw-reading-subcard-chevron {
+    transform: rotate(-90deg);
+}
+
+.nytw-reading-subcard-content {
+    display: grid;
+    grid-template-rows: 1fr;
+    overflow: hidden;
+    opacity: 1;
+    transition: grid-template-rows 0.22s ease, opacity 0.18s ease;
+}
+
+.nytw-reading-subcard.is-collapsed .nytw-reading-subcard-content {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.nytw-reading-subcard-inner {
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 6px 8px;
+    transition: padding 0.22s ease;
+    box-sizing: border-box;
+}
+
+.nytw-reading-subcard.is-collapsed .nytw-reading-subcard-inner {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.nytw-reading-style-body.is-disabled .nytw-card-section,
+.nytw-reading-style-body.is-disabled .nytw-reading-preview {
+    opacity: 0.55;
+    filter: saturate(0.75);
+}
+
+.nytw-reading-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid rgba(127, 127, 127, 0.12);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.24);
+}
+
+.nytw-reading-toggle {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 12px;
+}
+
+.nytw-reader-small-btn {
+    min-width: 70px;
+}
+
+.nytw-reading-preview {
+    padding: 10px 12px;
+    border: 1px solid rgba(127, 127, 127, 0.14);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.22);
+    overflow: hidden;
+}
+
+.nytw-reading-preview-body {
+    margin: 0 0 0.6em;
+}
+
+.nytw-reading-preview-italic {
+    color: var(--SmartThemeEmColor);
+}
+
+.nytw-reading-preview-dialogue {
+    display: inline-block;
+}
+
+.nytw-reader-preset-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.nytw-reader-preset-row, .nytw-reader-preset-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.nytw-reader-preset-row > label {
+    flex-shrink: 0;
+    font-size: 12px;
+}
+.nytw-reader-preset-row > .nytw-mini-select,
+.nytw-reader-preset-row > .nytw-preset-name {
+    flex: 1 1 120px;
+    min-width: 0;
+    width: auto;
+    max-width: 100%;
+    margin: 0;
+}
+.nytw-preset-hint {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    opacity: 0.75;
+    overflow-wrap: anywhere;
+}
+.nytw-preset-font-option {
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+.nytw-preset-font-option input { flex: 0 0 auto; margin: 0; }
+.nytw-reader-preset-panel .nytw-preset-btn {
+    flex: 0 0 auto;
+    min-width: 0;
+    margin: 0;
+    padding: 4px 8px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+.nytw-preset-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.nytw-reader-preset-panel :focus-visible {
+    outline: 2px solid var(--smart-theme-color, #6495ed);
+    outline-offset: 2px;
+}
+
+.nytw-reader-text-input {
+    width: 100%;
+    min-width: 0;
+    height: 30px;
+    font-size: 12px;
+    font-family: inherit;
+    color: rgba(255, 255, 255, 0.92);
+    background: rgba(0, 0, 0, 0.32);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 0 8px;
+    box-sizing: border-box;
+}
+
+.nytw-reader-text-input:focus {
+    border-color: var(--smart-theme-color, #6495ed);
+    outline: none;
+}
+
+.nytw-style-grid {
+    display: grid;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid rgba(127, 127, 127, 0.10);
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 6px;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.nytw-style-grid:not(.nytw-style-grid--head):hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.nytw-style-grid--4 {
+    grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 5px;
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+.nytw-style-grid--3 {
+    grid-template-columns: 68px minmax(0, 1fr) minmax(0, 1fr);
+}
+
+#nytw_typography_card .nytw-style-grid {
+    gap: 6px;
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+#nytw_typography_card .nytw-style-grid--3 {
+    grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr);
+}
+
+#nytw_typography_card .nytw-style-grid--4 {
+    grid-template-columns: 42px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 5px;
+}
+
+#nytw_typography_card #nytw_typo_row_custom,
+#nytw_typography_card #nytw_typo_row_locale {
+    grid-template-columns: 56px minmax(0, 1fr) minmax(0, 1fr);
+}
+
+#nytw_typography_card .nytw-style-grid--head {
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+#nytw_typography_card .nytw-style-grid--3 .nytw-typo-type,
+#nytw_typography_card .nytw-style-grid--4 .nytw-typo-type {
+    justify-content: flex-start;
+    gap: 4px;
+}
+
+#nytw_typography_card .nytw-style-grid--3 .nytw-typo-type i,
+#nytw_typography_card .nytw-style-grid--4 .nytw-typo-type i {
+    width: 12px;
+}
+
+#nytw_typography_card .nytw-style-grid--3 .nytw-stepper-btn,
+#nytw_typography_card .nytw-style-grid--4 .nytw-stepper-btn {
+    flex-basis: 16px;
+    width: 16px;
+    min-width: 16px;
+    font-size: 9px;
+    padding: 0;
+}
+
+#nytw_typography_card .nytw-style-grid--3 .nytw-typo-input,
+#nytw_typography_card .nytw-style-grid--4 .nytw-typo-input {
+    font-size: 12px;
+    padding: 0 !important;
+}
+
+.nytw-style-grid--4 .nytw-typo-type {
+    justify-content: flex-start;
+    gap: 4px;
+}
+
+.nytw-style-grid--4 .nytw-typo-type i {
+    width: 12px;
+}
+
+.nytw-style-grid--4 .nytw-stepper-btn {
+    flex-basis: 16px;
+    width: 16px;
+    min-width: 16px;
+    font-size: 9px;
+    padding: 0;
+}
+
+.nytw-style-grid--4 .nytw-typo-input {
+    font-size: 12px;
+    padding: 0 !important;
+}
+
+.nytw-style-grid--color {
+    grid-template-columns: 68px 34px minmax(0, 1fr);
+}
+
+.nytw-style-grid--head {
+    padding: 0 10px;
+    border: none;
+    background: transparent;
+    opacity: 0.9;
+}
+
+.nytw-style-grid--4.nytw-style-grid--head {
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+.nytw-style-grid--head > div {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.nytw-color-picker {
+    width: 32px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+.nytw-color-picker::-webkit-color-swatch-wrapper {
+    padding: 3px;
+}
+
+.nytw-color-picker::-webkit-color-swatch {
+    border: none;
+    border-radius: 4px;
+}
+
+.nytw-text-anim-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.nytw-text-anim-config {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 1300px;
+    opacity: 1;
+    overflow: hidden;
+    margin-top: 8px;
+    transform: translateY(0);
+    transform-origin: top;
+    transition: max-height 0.42s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.3s ease 0.08s,
+                margin-top 0.32s ease,
+                gap 0.32s ease,
+                transform 0.36s ease;
+}
+
+.nytw-text-anim-config.is-disabled {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+    gap: 0;
+    pointer-events: none;
+    transform: translateY(-6px);
+    transition: max-height 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.2s ease,
+                margin-top 0.28s ease,
+                gap 0.28s ease,
+                transform 0.28s ease;
+}
+
+.nytw-text-anim-preview[hidden],
+.nytw-text-anim-target-panel[hidden] {
+    display: none !important;
+}
+
+.nytw-text-anim-preview {
+    min-height: 46px;
+    padding: 10px 12px;
+    border: 1px solid rgba(127, 127, 127, 0.14);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.22);
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.55;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.nytw-text-anim-preview p {
+    margin: 0 0 0.55em;
+}
+
+.nytw-text-anim-preview q {
+    display: inline-block;
+}
+
+.nytw-text-anim-target-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid rgba(127, 127, 127, 0.12);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.18);
+}
+
+.nytw-text-anim-target-panel--global {
+    border-color: rgba(100, 149, 237, 0.22);
+    background: rgba(100, 149, 237, 0.08);
+}
+
+.nytw-text-anim-target-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 2px;
+}
+
+.nytw-text-anim-override {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.nytw-text-anim-target-panel.is-following-global .nytw-mini-row,
+.nytw-text-anim-target-panel.is-following-global .nytw-style-grid,
+.nytw-text-anim-target-panel.is-following-global .nytw-creative-row {
+    display: none;
+}
+
+.nytw-text-anim-color-row {
+    grid-template-columns: 68px 34px minmax(0, 1fr);
+}
+
+#chat [data-nytw-text-anim],
+.nytw-text-anim-preview [data-nytw-text-anim] {
+    --nytw-text-anim-color: currentColor;
+    --nytw-text-anim-power: 0.35;
+    --nytw-text-anim-cycle: 8s;
+    --nytw-text-anim-shadow: 5.6px;
+    --nytw-text-anim-shadow-soft: 3.1px;
+    --nytw-text-anim-shadow-deep: 8.7px;
+    --nytw-text-anim-shift: 0.9px;
+    --nytw-text-anim-shift-neg: -0.9px;
+    --nytw-text-anim-shift-soft: 0.5px;
+    --nytw-text-anim-shift-soft-neg: -0.5px;
+    --nytw-text-anim-dim: 0.94;
+    --nytw-text-anim-veil: 0.79;
+    animation-duration: var(--nytw-text-anim-cycle);
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in-out;
+    transform-origin: 50% 70%;
+}
+
+#chat .mes.nytw-streaming [data-nytw-text-anim] {
+    animation: none !important;
+    background: none !important;
+    -webkit-text-fill-color: currentColor !important;
+    filter: none !important;
+    transform: none !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+}
+
+#chat [data-nytw-text-anim="breath"],
+.nytw-text-anim-preview [data-nytw-text-anim="breath"] {
+    animation-name: nytw-text-anim-breath;
+}
+
+#chat [data-nytw-text-anim="edge-glow"],
+.nytw-text-anim-preview [data-nytw-text-anim="edge-glow"] {
+    animation-name: nytw-text-anim-edge-glow;
+}
+
+#chat [data-nytw-text-anim="breath"] *,
+#chat [data-nytw-text-anim="edge-glow"] *,
+.nytw-text-anim-preview [data-nytw-text-anim="breath"] *,
+.nytw-text-anim-preview [data-nytw-text-anim="edge-glow"] * {
+    text-shadow: inherit;
+}
+
+#chat [data-nytw-text-anim="sweep"],
+.nytw-text-anim-preview [data-nytw-text-anim="sweep"] {
+    animation-name: nytw-text-anim-sweep;
+    animation-timing-function: linear;
+    background-image:
+        linear-gradient(
+            100deg,
+            currentColor 0%,
+            currentColor 39%,
+            var(--nytw-text-anim-color) 47%,
+            rgba(255, 255, 255, 0.96) 50%,
+            var(--nytw-text-anim-color) 53%,
+            currentColor 61%,
+            currentColor 100%
+        );
+    background-size: 260% 100%;
+    background-position: 135% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+#chat [data-nytw-text-anim="sweep"] * {
+    -webkit-text-fill-color: currentColor;
+}
+
+#chat [data-nytw-text-anim="ink"],
+.nytw-text-anim-preview [data-nytw-text-anim="ink"] {
+    animation-name: nytw-text-anim-ink;
+    animation-timing-function: cubic-bezier(0.2, 0.72, 0.2, 1);
+}
+
+#chat [data-nytw-text-anim="candle"],
+.nytw-text-anim-preview [data-nytw-text-anim="candle"] {
+    animation-name: nytw-text-anim-candle;
+    animation-timing-function: steps(1, end);
+}
+
+#chat [data-nytw-text-anim="paper"],
+.nytw-text-anim-preview [data-nytw-text-anim="paper"] {
+    animation-name: nytw-text-anim-paper;
+}
+
+#chat [data-nytw-text-anim="frost"],
+.nytw-text-anim-preview [data-nytw-text-anim="frost"] {
+    animation-name: nytw-text-anim-frost;
+}
+
+#chat [data-nytw-text-anim="glitch"],
+.nytw-text-anim-preview [data-nytw-text-anim="glitch"] {
+    animation-name: nytw-text-anim-glitch;
+    animation-timing-function: steps(1, end);
+}
+
+#chat [data-nytw-text-anim-role="dialogue"][data-nytw-text-anim="candle"],
+#chat [data-nytw-text-anim-role="dialogue"][data-nytw-text-anim="glitch"] {
+    display: inline-block;
+}
+
+@keyframes nytw-text-anim-breath {
+    0%, 100% {
+        opacity: 1;
+        filter: brightness(1) drop-shadow(0 0 0 transparent);
+        text-shadow: 0 0 0 transparent;
+    }
+    50% {
+        opacity: var(--nytw-text-anim-dim);
+        filter: brightness(1.04) drop-shadow(0 0 var(--nytw-text-anim-shadow-soft) var(--nytw-text-anim-color));
+        text-shadow: 0 0 var(--nytw-text-anim-shadow) var(--nytw-text-anim-color);
+    }
+}
+
+@keyframes nytw-text-anim-edge-glow {
+    0%, 100% {
+        filter: brightness(1) drop-shadow(0 0 0 transparent);
+        text-shadow: 0 0 0 transparent;
+    }
+    42%, 58% {
+        filter: brightness(1.06) drop-shadow(0 0 var(--nytw-text-anim-shadow-soft) var(--nytw-text-anim-color));
+        text-shadow:
+            0 0 var(--nytw-text-anim-shadow-soft) currentColor,
+            0 0 var(--nytw-text-anim-shadow) var(--nytw-text-anim-color);
+    }
+}
+
+@keyframes nytw-text-anim-sweep {
+    0%, 10% {
+        background-position: 135% 0;
+        text-shadow: 0 0 0 transparent;
+    }
+    44%, 56% {
+        text-shadow: 0 0 var(--nytw-text-anim-shadow-soft) var(--nytw-text-anim-color);
+    }
+    90%, 100% {
+        background-position: -35% 0;
+        text-shadow: 0 0 0 transparent;
+    }
+}
+
+@keyframes nytw-text-anim-ink {
+    0% {
+        opacity: var(--nytw-text-anim-veil);
+        filter: blur(var(--nytw-text-anim-shadow-deep));
+        text-shadow:
+            0 0 var(--nytw-text-anim-shadow-deep) var(--nytw-text-anim-color),
+            0 0 var(--nytw-text-anim-shadow-deep) currentColor;
+    }
+    14% {
+        opacity: 0.82;
+        filter: blur(var(--nytw-text-anim-shadow-soft));
+        text-shadow: 0 0 var(--nytw-text-anim-shadow) var(--nytw-text-anim-color);
+    }
+    30%, 78% {
+        opacity: 1;
+        filter: blur(0);
+        text-shadow: 0 0 0 transparent;
+    }
+    100% {
+        opacity: var(--nytw-text-anim-veil);
+        filter: blur(var(--nytw-text-anim-shadow));
+        text-shadow: 0 0 var(--nytw-text-anim-shadow-deep) var(--nytw-text-anim-color);
+    }
+}
+
+@keyframes nytw-text-anim-candle {
+    0%, 100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) rotate(0deg);
+        text-shadow: 0 0 var(--nytw-text-anim-shadow-soft) var(--nytw-text-anim-color);
+    }
+    12% {
+        opacity: var(--nytw-text-anim-dim);
+        transform: translate3d(var(--nytw-text-anim-shift), -0.4px, 0) rotate(0.08deg);
+        text-shadow: var(--nytw-text-anim-shift) 0 var(--nytw-text-anim-shadow) var(--nytw-text-anim-color);
+    }
+    27% {
+        opacity: 1;
+        transform: translate3d(var(--nytw-text-anim-shift-neg), 0.3px, 0) rotate(-0.06deg);
+        text-shadow: var(--nytw-text-anim-shift-neg) 0 var(--nytw-text-anim-shadow-soft) var(--nytw-text-anim-color);
+    }
+    41% {
+        opacity: var(--nytw-text-anim-dim);
+        transform: translate3d(0.4px, -0.2px, 0) rotate(0.04deg);
+        text-shadow: 0 0 var(--nytw-text-anim-shadow) var(--nytw-text-anim-color);
+    }
+    66% {
+        opacity: var(--nytw-text-anim-dim);
+        transform: translate3d(var(--nytw-text-anim-shift-soft-neg), 0.2px, 0) rotate(-0.08deg);
+        text-shadow: var(--nytw-text-anim-shift-neg) 0 var(--nytw-text-anim-shadow) var(--nytw-text-anim-color);
+    }
+    83% {
+        opacity: 1;
+        transform: translate3d(var(--nytw-text-anim-shift-soft), -0.3px, 0) rotate(0.05deg);
+        text-shadow: var(--nytw-text-anim-shift) 0 var(--nytw-text-anim-shadow-soft) var(--nytw-text-anim-color);
+    }
+}
+
+@keyframes nytw-text-anim-paper {
+    0%, 100% { opacity: 1; text-shadow: none; }
+    50% { opacity: var(--nytw-text-anim-dim); text-shadow: 0 0 var(--nytw-text-anim-shadow) var(--nytw-text-anim-color); }
+}
+
+@keyframes nytw-text-anim-frost {
+    0%, 100% { text-shadow: 0 0 0 transparent; }
+    50% {
+        text-shadow:
+            0 0 var(--nytw-text-anim-shadow) currentColor,
+            0 0 var(--nytw-text-anim-shadow) var(--nytw-text-anim-color);
+    }
+}
+
+@keyframes nytw-text-anim-glitch {
+    0%, 13%, 28%, 44%, 61%, 76%, 100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+        text-shadow: none;
+    }
+    14%, 18% {
+        opacity: var(--nytw-text-anim-dim);
+        transform: translate3d(var(--nytw-text-anim-shift-neg), 0, 0);
+        text-shadow:
+            var(--nytw-text-anim-shift-neg) 0 0 var(--nytw-text-anim-color),
+            var(--nytw-text-anim-shift) 0 0 currentColor;
+    }
+    19%, 23% {
+        opacity: 1;
+        transform: translate3d(var(--nytw-text-anim-shift), 0, 0);
+        text-shadow:
+            var(--nytw-text-anim-shift) 0 0 var(--nytw-text-anim-color),
+            var(--nytw-text-anim-shift-neg) 0 0 currentColor;
+    }
+    45%, 51% {
+        opacity: var(--nytw-text-anim-dim);
+        transform: translate3d(0, -0.5px, 0);
+        text-shadow:
+            0 var(--nytw-text-anim-shift-neg) 0 var(--nytw-text-anim-color),
+            0 var(--nytw-text-anim-shift) 0 currentColor;
+    }
+    62%, 70% {
+        opacity: var(--nytw-text-anim-dim);
+        transform: translate3d(var(--nytw-text-anim-shift-neg), 0.4px, 0);
+        text-shadow:
+            var(--nytw-text-anim-shift) 0 var(--nytw-text-anim-shadow-soft) var(--nytw-text-anim-color),
+            var(--nytw-text-anim-shift-neg) 0 0 currentColor;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #chat [data-nytw-text-anim],
+    .nytw-text-anim-preview [data-nytw-text-anim] {
+        animation: none !important;
+        background: none !important;
+        -webkit-text-fill-color: currentColor !important;
+        filter: none !important;
+        transform: none !important;
+        text-shadow: none !important;
+        opacity: 1 !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .nytw-style-grid--4,
+    .nytw-style-grid--3,
+    .nytw-style-grid--color {
+        grid-template-columns: 1fr;
+    }
+
+    .nytw-style-grid--head {
+        display: none;
+    }
+
+    .nytw-typo-type {
+        justify-content: flex-start;
+    }
+
+}
+
+/* Toggle switch */
+.nytw-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.nytw-switch input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.nytw-switch-slider {
+    width: 42px;
+    height: 22px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    position: relative;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.nytw-switch-slider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.85);
+    transform: translateY(-50%);
+    transition: transform 0.2s ease, background 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.nytw-switch input:checked + .nytw-switch-slider {
+    background: rgba(100, 149, 237, 0.25);
+    border-color: rgba(100, 149, 237, 0.45);
+}
+
+.nytw-switch input:checked + .nytw-switch-slider::after {
+    transform: translate(20px, -50%);
+}
+
+/* --- Animation Stepper (Compact & Creative) --- */
+
+.nytw-anim-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(127, 127, 127, 0.1);
+    border-radius: 8px;
+    padding: 6px;
+}
+
+.nytw-stepper-btn {
+    width: 28px;
+    height: 50px; /* Match content height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.nytw-stepper-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.nytw-stepper-content {
+    flex: 1;
+    height: 50px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    overflow: hidden;
+}
+
+/* Reusing animation preview styles from previous attempt but adapting */
+.nytw-anim-preview {
+    font-size: 16px;
+    font-family: monospace;
+    color: #eee;
+    height: 24px;
+    display: flex;
+    align-items: center;
+}
+
+.nytw-anim-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 500;
+}
+
+/* Specific Previews */
+.preview-none::after {
+    content: "OFF";
+    font-size: 14px;
+    opacity: 0.3;
+    font-weight: bold;
+}
+
+.preview-typewriter span {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    line-height: 1;
+}
+
+.preview-typewriter[data-cursor-enabled="1"] span::after {
+    content: "";
+    position: absolute;
+    left: 100%;
+    top: 0.08em;
+    bottom: 0.08em;
+    width: 2px;
+    margin-left: 0;
+    background: currentColor;
+    border-radius: 1px;
+    opacity: 0.9;
+    transform-origin: center;
+}
+
+.preview-typewriter[data-cursor-enabled="1"][data-cursor-shape="block"] span::after {
+    left: 100%;
+    top: 0.08em;
+    bottom: 0.08em;
+    width: 0.62em;
+    margin-left: 0;
+    border-radius: 2px;
+    opacity: 0.55;
+}
+
+.preview-typewriter[data-cursor-enabled="1"][data-cursor-shape="underscore"] span::after {
+    left: 100%;
+    top: auto;
+    bottom: 0.02em;
+    width: 0.62em;
+    height: 2px;
+    margin-left: 0;
+    border-radius: 1px;
+    opacity: 0.9;
+}
+
+.preview-typewriter[data-cursor-enabled="1"][data-cursor-shape="thin"] span::after {
+    width: 1px;
+}
+
+.preview-typewriter[data-cursor-enabled="1"][data-cursor-shape="hollow"] span::after {
+    left: 100%;
+    top: 0.08em;
+    bottom: 0.08em;
+    width: 0.62em;
+    margin-left: 0;
+    background: transparent;
+    border: 2px solid currentColor;
+    border-radius: 2px;
+    opacity: 0.8;
+}
+
+.preview-typewriter[data-cursor-enabled="1"][data-cursor-shape="image"] span::after {
+    left: 100%;
+    top: 0;
+    bottom: auto;
+    width: 1em;
+    height: 1em;
+    margin-left: 0;
+    background: transparent;
+    background-image: var(--nytw-preview-cursor-image, none);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    border: none;
+    border-radius: 0;
+    opacity: 1;
+}
+
+.preview-typewriter[data-cursor-enabled="1"][data-cursor-anim="blink"] span::after {
+    animation: nytw-preview-cursor-blink 1s steps(1, end) infinite;
+}
+
+.preview-typewriter[data-cursor-enabled="1"][data-cursor-anim="smooth"] span::after {
+    animation: nytw-preview-cursor-smooth 1.5s ease-in-out infinite;
+}
+
+.preview-typewriter[data-cursor-enabled="1"][data-cursor-anim="pulse"] span::after {
+    animation: nytw-preview-cursor-pulse 1.2s ease-in-out infinite;
+}
+
+.preview-typewriter[data-cursor-enabled="1"][data-cursor-anim="elastic"] span::after {
+    animation: nytw-preview-cursor-elastic 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+
+.preview-typewriter[data-cursor-enabled="1"][data-cursor-anim="glitch"] span::after {
+    animation: nytw-preview-cursor-glitch 2s steps(1) infinite;
+}
+
+.preview-typewriter[data-cursor-enabled="1"][data-cursor-anim="solid"] span::after {
+    animation: none;
+    opacity: 0.9;
+}
+
+@keyframes nytw-preview-cursor-blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+}
+
+@keyframes nytw-preview-cursor-smooth {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+}
+
+@keyframes nytw-preview-cursor-elastic {
+    0%, 100% { transform: scaleY(1); opacity: 0.9; }
+    50% { transform: scaleY(0.6); opacity: 0.5; }
+}
+
+@keyframes nytw-preview-cursor-glitch {
+    0% { opacity: 1; transform: translate(0, 0); }
+    5% { opacity: 0; transform: translate(-2px, 2px); }
+    10% { opacity: 1; transform: translate(2px, -2px); }
+    15% { opacity: 0; }
+    20% { opacity: 1; transform: translate(0, 0); }
+    40% { opacity: 1; }
+    42% { opacity: 0.5; transform: skewX(20deg); }
+    44% { opacity: 1; transform: skewX(0); }
+    80% { opacity: 1; }
+    82% { opacity: 0; }
+    84% { opacity: 1; }
+    100% { opacity: 1; }
+}
+
+@keyframes nytw-preview-cursor-pulse {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+}
+
+.preview-blur span {
+    animation: nytw-blur-anim 2s infinite;
+}
+@keyframes nytw-blur-anim {
+    0%, 100% { filter: blur(0); opacity: 1; }
+    50% { filter: blur(3px); opacity: 0.5; }
+}
+
+.preview-glow span {
+    animation: nytw-glow-anim 2s infinite;
+}
+@keyframes nytw-glow-anim {
+    0%, 100% { text-shadow: none; color: #eee; }
+    50% { text-shadow: 0 0 5px #fff, 0 0 10px #4da6ff; color: #fff; }
+}
+
+/* --- Creative Rows (Speed & Cursor) --- */
+
+.nytw-creative-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(127, 127, 127, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 5px;
+}
+
+.nytw-creative-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.nytw-creative-label i {
+    opacity: 0.6;
+    font-size: 11px;
+}
+
+/* Speed Control */
+.nytw-range-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nytw-range-wrapper i {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.nytw-creative-range {
+    flex: 1;
+    -webkit-appearance: none;
+    background: transparent;
+    height: 6px;
+    cursor: pointer;
+}
+
+/* Range Track */
+.nytw-creative-range::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    border: none;
+}
+
+/* Range Thumb */
+.nytw-creative-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: #fff;
+    margin-top: -5px; /* Centers thumb */
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    transition: transform 0.1s;
+}
+
+.nytw-creative-range:active::-webkit-slider-thumb {
+    transform: scale(1.2);
+    background: var(--smart-theme-color, #6495ed);
+    box-shadow: 0 0 15px var(--smart-theme-color, #6495ed);
+}
+
+.nytw-speed-display {
+    text-align: right;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    font-family: monospace;
+    margin-top: -4px;
+}
+
+/* Speed Sync Header */
+.nytw-speed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.nytw-speed-sync-label {
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.6);
+    user-select: none;
+    transition: color 0.2s;
+}
+
+.nytw-speed-sync-label:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.nytw-speed-sync-label input {
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--smart-theme-color, #6495ed);
+}
+
+/* Cursor Toggle */
+.nytw-cursor-toggle-wrapper {
+    display: flex;
+}
+
+.nytw-cursor-config-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    margin-top: 0;
+    transform: translateY(-4px);
+    transition: max-height 0.3s ease, opacity 0.25s ease, margin-top 0.3s ease, transform 0.3s ease;
+}
+
+.nytw-cursor-config-panel.is-open {
+    max-height: 260px;
+    opacity: 1;
+    margin-top: 8px;
+    transform: translateY(0);
+}
+
+.nytw-cursor-config-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nytw-cursor-config-label {
+    width: 56px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.nytw-cursor-config-label i {
+    font-size: 10px;
+    opacity: 0.55;
+}
+
+.nytw-cursor-config-row .nytw-mini-select {
+    height: 30px;
+}
+
+.nytw-cursor-url-input {
+    flex: 1;
+    height: 30px;
+    padding: 4px 8px !important;
+    font-size: 11px;
+    font-family: monospace;
+}
+
+.nytw-cursor-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    user-select: none;
+}
+
+.nytw-cursor-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.cursor-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1em;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.3);
+    margin-right: 10px;
+    transition: color 0.3s, text-shadow 0.3s;
+}
+
+.cursor-text {
+    flex: 1;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.cursor-status {
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.4);
+    transition: all 0.3s;
+}
+
+/* Checked State for Cursor */
+#nytw_stream_anim_cursor:checked + .nytw-cursor-btn {
+    background: rgba(100, 149, 237, 0.15);
+    border-color: rgba(100, 149, 237, 0.5);
+    box-shadow: 0 0 10px rgba(100, 149, 237, 0.1);
+}
+
+#nytw_stream_anim_cursor:checked + .nytw-cursor-btn .cursor-icon {
+    color: #fff;
+    text-shadow: 0 0 8px #fff;
+    animation: nytw-cursor-icon-blink 1s steps(1, end) infinite;
+}
+
+#nytw_stream_anim_cursor:checked + .nytw-cursor-btn .cursor-text {
+    color: #fff;
+}
+
+#nytw_stream_anim_cursor:checked + .nytw-cursor-btn .cursor-status {
+    background: rgba(100, 149, 237, 0.8);
+    color: #fff;
+    /* content: "ON"; - handled by JS to prevent pseudo conflict */
+}
+
+@keyframes nytw-cursor-icon-blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0.25; }
+}
+
+/* --- Animation Stepper Transition --- */
+
+.nytw-anim-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    height: 100%;
+    /* Ensure it handles events */
+}
+
+.nytw-anim-enter {
+    animation: nytw-slide-in-up 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.nytw-anim-exit {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    animation: nytw-slide-out-up 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes nytw-slide-in-up {
+    0% { opacity: 0; transform: translateY(10px) scale(0.95); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes nytw-slide-out-up {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-10px) scale(0.95); }
+}
+
+/* ================================================================== */
+/* 标签系统 + 字体库工具栏                                             */
+/* ================================================================== */
+
+.nytw-font-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.nytw-font-search {
+    position: relative;
+    flex: 1 1 140px;
+    min-width: 120px;
+    display: flex;
+    align-items: center;
+}
+
+.nytw-font-search > i {
+    position: absolute;
+    left: 8px;
+    font-size: 11px;
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.nytw-font-search .nytw-input {
+    width: 100%;
+    padding-left: 24px;
+    height: 30px;
+    font-size: 12px;
+}
+
+.nytw-font-sort {
+    width: auto;
+    min-width: 84px;
+    height: 30px;
+    font-size: 12px;
+    padding: 0 6px;
+}
+
+.nytw-tag-manager-btn {
+    height: 30px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.nytw-tag-manager-btn i {
+    font-size: 11px;
+}
+
+.nytw-tag-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin: 2px 0 6px;
+}
+
+.nytw-tag-bar--popup {
+    position: sticky;
+    top: -4px;
+    z-index: 2;
+    margin: -4px -4px 4px;
+    padding: 5px 6px;
+    background: rgba(30, 30, 30, 0.96);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.nytw-tag-bar--popup::-webkit-scrollbar {
+    display: none;
+}
+
+.nytw-tag-bar-hint {
+    font-size: 11px;
+    opacity: 0.45;
+}
+
+.nytw-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px 2px 6px;
+    height: 22px;
+    border-radius: 11px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: inherit;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.nytw-tag-chip:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.nytw-tag-chip.is-active {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.35);
+    font-weight: 600;
+}
+
+.nytw-tag-chip:active {
+    transform: scale(0.97);
+}
+
+.nytw-tag-chip--muted .nytw-tag-label {
+    opacity: 0.6;
+}
+
+.nytw-tag-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+    display: inline-block;
+}
+
+.nytw-tag-dot--button {
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    width: 12px;
+    height: 12px;
+}
+
+.nytw-tag-count {
+    opacity: 0.5;
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+}
+
+.nytw-font-count {
+    font-size: 11px;
+    opacity: 0.45;
+    margin-bottom: 6px;
+    min-height: 12px;
+}
+
+.nytw-font-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 5px;
+}
+
+.nytw-tag-chip--font {
+    height: 18px;
+    font-size: 10px;
+    padding: 1px 7px 1px 5px;
+    border-radius: 9px;
+    opacity: 0.9;
+}
+
+.nytw-tag-none {
+    font-size: 10px;
+    opacity: 0.35;
+}
+
+.nytw-font-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+.nytw-font-tag-btn {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    border: 1px solid rgba(127, 127, 127, 0.25);
+    background: transparent;
+    color: inherit;
+    opacity: 0.65;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.nytw-font-tag-btn:hover {
+    opacity: 1;
+    background: rgba(127, 127, 127, 0.15);
+}
+
+.nytw-font-option-tag {
+    font-size: 9px;
+    border: 1px solid currentColor;
+    border-radius: 7px;
+    padding: 0 5px;
+    margin-left: 4px;
+    opacity: 0.75;
+    flex: 0 0 auto;
+}
+
+/* --- 浮动标签面板 --- */
+
+#nytw_settings_root {
+    position: relative;
+}
+
+#nytw_tag_layer {
+    pointer-events: none;
+    z-index: 60;
+}
+
+#nytw_tag_layer.nytw-tag-layer--inline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#nytw_tag_layer.nytw-tag-layer--fixed {
+    position: fixed;
+    inset: 0;
+}
+
+.nytw-tag-panel {
+    position: absolute;
+    pointer-events: auto;
+    background: rgba(30, 30, 30, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    max-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    color: inherit;
+}
+
+.nytw-tag-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.nytw-tag-panel-close {
+    background: transparent;
+    border: none;
+    color: inherit;
+    opacity: 0.55;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 4px;
+}
+
+.nytw-tag-panel-close:hover {
+    opacity: 1;
+}
+
+.nytw-tag-panel-body {
+    padding: 8px 10px 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.nytw-tag-panel-subtitle {
+    font-size: 11px;
+    opacity: 0.55;
+    word-break: break-all;
+}
+
+.nytw-tag-manage-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.nytw-tag-name-input {
+    flex: 1;
+    height: 28px;
+    font-size: 12px;
+}
+
+.nytw-tag-manage-del {
+    background: transparent;
+    border: none;
+    color: #ff8888;
+    opacity: 0.6;
+    cursor: pointer;
+    font-size: 11px;
+    padding: 4px;
+}
+
+.nytw-tag-manage-del:hover {
+    opacity: 1;
+}
+
+.nytw-tag-add-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 8px;
+}
+
+.nytw-tag-add-row .nytw-input {
+    flex: 1;
+    height: 28px;
+    font-size: 12px;
+}
+
+.nytw-tag-add-row .menu_button {
+    height: 28px;
+    font-size: 12px;
+    padding: 0 10px;
+}
+
+.nytw-tag-choice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 7px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: inherit;
+    cursor: pointer;
+    font-size: 12px;
+    text-align: left;
+}
+
+.nytw-tag-choice.is-active {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.12);
+    font-weight: 600;
+}
+
+.nytw-tag-choice-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nytw-tag-choice-check {
+    opacity: 0.8;
+    font-size: 10px;
+    min-width: 12px;
+    text-align: right;
+}
+
+.nytw-input--error {
+    border-color: rgba(220, 80, 80, 0.8) !important;
+    box-shadow: 0 0 0 1px rgba(220, 80, 80, 0.4);
+}
+
+/* --- 多选 / 批量管理 --- */
+
+.nytw-tag-manager-btn.is-active {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.35);
+    font-weight: 600;
+}
+
+.nytw-font-row--batch {
+    cursor: pointer;
+}
+
+.nytw-font-row--batch:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nytw-font-row--batch.is-selected {
+    border-color: rgba(120, 180, 255, 0.65);
+    background: rgba(90, 150, 255, 0.14);
+}
+
+.nytw-font-row--batch .nytw-font-actions,
+.nytw-font-row--batch .nytw-font-header-actions,
+.nytw-font-row--batch .nytw-font-tag-btn {
+    display: none;
+}
+
+.nytw-row-check {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    margin-right: 8px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #cfe4ff;
+}
+
+.nytw-font-row--batch.is-selected .nytw-row-check {
+    background: rgba(110, 170, 255, 0.5);
+    border-color: rgba(160, 200, 255, 0.9);
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.nytw-batch-bar {
+    position: sticky;
+    bottom: 0;
+    margin-top: 8px;
+    padding: 8px 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    background: rgba(30, 30, 30, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.nytw-batch-bar[hidden] {
+    display: none;
+}
+
+.nytw-batch-count {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-right: auto;
+}
+
+.nytw-batch-bar .menu_button {
+    height: 28px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 10px;
+}
+
+.nytw-mode-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.nytw-mode-btn {
+    flex: 1;
+    height: 26px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.03);
+    color: inherit;
+    cursor: pointer;
+}
+
+.nytw-mode-btn.is-active {
+    background: rgba(110, 170, 255, 0.28);
+    border-color: rgba(150, 195, 255, 0.7);
+    font-weight: 600;
+}
+
+.nytw-batch-apply {
+    background: rgba(90, 150, 255, 0.22);
+}
+
+/* 结构诊断输出 */
+.nytw-diag-box {
+    margin: 8px 0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    background: rgba(30, 30, 30, 0.96);
+    overflow: hidden;
+}
+
+.nytw-diag-box[hidden] {
+    display: none;
+}
+
+.nytw-diag-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nytw-diag-title {
+    flex: 1;
+    font-size: 11px;
+    opacity: 0.75;
+}
+
+.nytw-diag-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.nytw-diag-actions .menu_button {
+    height: 24px;
+    font-size: 11px;
+    padding: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.nytw-diag-close {
+    background: transparent;
+    border: none;
+    color: inherit;
+    opacity: 0.6;
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 12px;
+}
+
+.nytw-diag-close:hover {
+    opacity: 1;
+}
+
+.nytw-diag-out {
+    max-height: 220px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 10px;
+    line-height: 1.45;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 8px;
+    margin: 0;
+    color: inherit;
+}
+
+.nytw-diag-out[hidden] {
+    display: none;
+}
+
+
+/* 四列（字号/字距/行高）里步进器更紧凑，避免数字被挤没 */
+.nytw-style-grid--4 .nytw-stepper {
+    gap: 0;
+}
+
+.nytw-style-grid--4 .nytw-stepper-btn {
+    width: 15px;
+    font-size: 8px;
+    padding: 0;
+}
+
+.nytw-style-grid--4 .nytw-stepper .nytw-typo-input {
+    min-width: 34px !important;
+    padding: 0 4px !important;
+}
+
+/* 搜索框图标与文字留白（防止被美化样式覆盖） */
+.nytw-font-search > i {
+    left: 9px;
+    z-index: 1;
+    font-size: 12px;
+}
+
+.nytw-font-search .nytw-input {
+    padding-left: 28px !important;
+}
+
+/* 多选操作栏：两行布局，按钮等宽 */
+.nytw-batch-bar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px 10px;
+    align-items: stretch;
+}
+
+.nytw-batch-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nytw-batch-row--meta {
+    justify-content: space-between;
+}
+
+.nytw-batch-row--actions .menu_button {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+}
+
+.nytw-batch-count {
+    font-size: 12px;
+    opacity: 0.85;
+    margin: 0;
+}
+
+.nytw-batch-link {
+    background: transparent;
+    border: none;
+    font-size: 12px;
+    color: inherit;
+    opacity: 0.6;
+    cursor: pointer;
+    padding: 2px 4px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.nytw-batch-link:hover {
+    opacity: 1;
+}
+
+.nytw-batch-danger {
+    color: #d05a5a !important;
+}
+
+/* 字体库：只让列表滚动，工具栏与多选栏固定不动（类似冻结窗格） */
+#nytw_imported_fonts {
+    max-height: 44vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 2px;
+    border-top: 1px solid rgba(127, 127, 127, 0.12);
+    padding-top: 8px;
+}
+
+@media (min-height: 700px) {
+    #nytw_imported_fonts {
+        max-height: 50vh;
+    }
+}
+
+#nytw_imported_fonts::-webkit-scrollbar {
+    width: 4px;
+}
+
+#nytw_imported_fonts::-webkit-scrollbar-thumb {
+    background: rgba(127, 127, 127, 0.35);
+    border-radius: 2px;
+}
+
+/* 多选操作栏不再需要吸底，它本来就在列表外面 */
+.nytw-batch-bar {
+    position: static;
+    margin-top: 8px;
+    border-top: 1px solid rgba(127, 127, 127, 0.14);
+    border-radius: 0;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+/* 标签筛选折叠条 */
+.nytw-tag-bar-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 6px;
+    margin-top: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 6px;
+    transition: background 0.16s ease;
+}
+
+.nytw-tag-bar-head:hover {
+    background: rgba(127, 127, 127, 0.1);
+}
+
+.nytw-tag-bar-icon {
+    font-size: 9px;
+    opacity: 0.6;
+    transition: transform 0.18s ease;
+}
+
+.nytw-tag-bar-head.is-open .nytw-tag-bar-icon {
+    transform: rotate(90deg);
+}
+
+.nytw-tag-bar-title {
+    opacity: 0.9;
+}
+
+.nytw-tag-bar-summary {
+    opacity: 0.6;
+    font-size: 11px;
+}
+
+.nytw-tag-bar-wrap {
+    overflow: hidden;
+    max-height: 320px;
+    transition: max-height 0.22s ease, opacity 0.18s ease;
+}
+
+.nytw-tag-bar-wrap.is-collapsed {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
