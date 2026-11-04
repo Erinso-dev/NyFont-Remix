@@ -1439,6 +1439,33 @@ export function initDisplaySettingsTab() {
 
         for (const child of root.childNodes) walk(child, 0);
 
+        // —— 缩进范围判定明细（排查「只有第一段缩进」这类问题）——
+        try {
+            const scopeSelector = (() => {
+                const raw = String(settings.indentScopeTags || '');
+                const names = raw.split(/[,，\s]+/)
+                    .map((part) => part.trim().replace(/^<+/, '').replace(/>+$/, '').replace(/\/.*$/, '').trim())
+                    .filter((name) => /^[a-zA-Z][\w-]*$/.test(name));
+                return names.length ? Array.from(new Set(names)).join(',') : '';
+            })();
+            const blocks = Array.from(root.querySelectorAll('p, li, blockquote, .nytw-para-line')).slice(0, 40);
+            lines.push('');
+            lines.push(`--- 缩进范围判定（开关=${settings.indentScopeEnabled === true ? '开' : '关'} 标签=${scopeSelector || '-'} 方式=${settings.indentScopeMode === 'exclude' ? '排除' : '包含'}）---`);
+            blocks.forEach((el, index) => {
+                const tag = el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/)[0] : '');
+                const text = String(el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 16);
+                let byAncestor = false;
+                let byChild = false;
+                try {
+                    byAncestor = Boolean(scopeSelector && el.closest(scopeSelector));
+                    byChild = Boolean(scopeSelector && el.querySelector(scopeSelector));
+                } catch { /* ignore */ }
+                const off = el.hasAttribute('data-nytw-indent-off') ? '是' : '否';
+                const indent = getComputedStyle(el).textIndent;
+                lines.push(`#${index + 1} <${tag}> 祖先=${byAncestor ? '是' : '否'} 子含=${byChild ? '是' : '否'} 已取消=${off} indent=${indent} "${text}"`);
+            });
+        } catch { /* ignore */ }
+
         // 附带开关行的计算样式，方便排查错位
         const bar = document.querySelector('.nytw-reading-toolbar');
         if (bar instanceof HTMLElement) {
