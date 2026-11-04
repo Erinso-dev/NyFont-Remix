@@ -75,6 +75,10 @@ export const DEFAULT_SETTINGS = {
     readingPadRight: null,
     readingJustify: false,
     splitLinesToParagraphs: false,
+    // 首行缩进的生效范围
+    indentScopeEnabled: false,
+    indentScopeTags: 'content',
+    indentScopeMode: 'include',
     readingThemeBindings: {},
     readingThemeAutoApply: false,
     overallFontWeight: '',
@@ -380,6 +384,9 @@ function applyDefaultSettings() {
     settings.readingJustify = settings.readingJustify === true;
     delete settings.breakToParagraph; // 已移除的功能，清掉旧存档
     settings.splitLinesToParagraphs = settings.splitLinesToParagraphs === true;
+    settings.indentScopeEnabled = settings.indentScopeEnabled === true;
+    settings.indentScopeTags = String(settings.indentScopeTags || '').trim();
+    settings.indentScopeMode = settings.indentScopeMode === 'exclude' ? 'exclude' : 'include';
     settings.readingThemeAutoApply = settings.readingThemeAutoApply === true;
     if (!settings.readingThemeBindings || typeof settings.readingThemeBindings !== "object" || Array.isArray(settings.readingThemeBindings)) {
         settings.readingThemeBindings = {};

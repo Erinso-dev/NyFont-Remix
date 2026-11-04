@@ -424,7 +424,18 @@ export function initDisplaySettingsTab() {
                     <div class="nytw-style-grid nytw-style-grid--3"><div class="nytw-typo-type"><i class="fa-solid fa-layer-group"></i> 整体</div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_overall_paragraph_spacing" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0" max="6" step="0.05" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_overall_text_indent" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0" max="8" step="0.25" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div></div>
                     <div class="nytw-style-grid nytw-style-grid--3"><div class="nytw-typo-type"><i class="fa-solid fa-align-left"></i> 正文</div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_body_paragraph_spacing" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0" max="6" step="0.05" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_body_text_indent" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0" max="8" step="0.25" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div></div>
                     <div class="nytw-style-grid nytw-style-grid--3"><div class="nytw-typo-type"><i class="fa-solid fa-quote-left"></i> 对话</div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_dialogue_paragraph_spacing" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0" max="6" step="0.05" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_dialogue_text_indent" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0" max="8" step="0.25" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div></div>
-                    <label class="nytw-preset-font-option" for="nytw_split_lines_to_paragraphs"><input id="nytw_split_lines_to_paragraphs" type="checkbox" /><span>每行独立成段（逐行首行缩进）</span></label>
+                                        <label class="nytw-preset-font-option" for="nytw_indent_scope_enabled"><input id="nytw_indent_scope_enabled" type="checkbox" /><span>首行缩进只作用于指定标签内</span></label>
+                    <div id="nytw_indent_scope_box" class="nytw-style-grid nytw-style-grid--2" hidden>
+                        <div class="nytw-typo-type"><i class="fa-solid fa-tag"></i> 格式标签</div>
+                        <input id="nytw_indent_scope_tags" type="text" class="text_pole nytw-input" placeholder="如 content，多个用逗号分隔" autocomplete="off" />
+                        <div class="nytw-typo-type"><i class="fa-solid fa-filter"></i> 匹配方式</div>
+                        <select id="nytw_indent_scope_mode" class="text_pole nytw-input">
+                            <option value="include">只在这些标签内缩进</option>
+                            <option value="exclude">除了这些标签都缩进</option>
+                        </select>
+                    </div>
+                    <p class="nytw-preset-hint" id="nytw_indent_scope_hint">勾选后，只有被这些标签包住的段落才有首行缩进；标签外面的（比如居中的时间栏）不缩进。标签可以写多个，用逗号隔开。</p>
+<label class="nytw-preset-font-option" for="nytw_split_lines_to_paragraphs"><input id="nytw_split_lines_to_paragraphs" type="checkbox" /><span>每行独立成段（逐行首行缩进）</span></label>
                     <div class="nytw-reader-preset-actions">
                         <button id="nytw_para_diag" class="menu_button nytw-reader-small-btn nytw-preset-btn" type="button">
                             <i class="fa-solid fa-list-tree" aria-hidden="true"></i> 查看正文结构
@@ -672,6 +683,10 @@ export function initDisplaySettingsTab() {
     const readingPadLeftEl = document.getElementById('nytw_reading_pad_left');
     const readingPadRightEl = document.getElementById('nytw_reading_pad_right');
     const readingJustifyEl = document.getElementById('nytw_reading_justify');
+    const indentScopeEnabledEl = document.getElementById('nytw_indent_scope_enabled');
+    const indentScopeTagsEl = document.getElementById('nytw_indent_scope_tags');
+    const indentScopeModeEl = document.getElementById('nytw_indent_scope_mode');
+    const indentScopeBoxEl = document.getElementById('nytw_indent_scope_box');
     const splitLinesEl = document.getElementById('nytw_split_lines_to_paragraphs');
     const overallFontWeightEl = document.getElementById('nytw_overall_font_weight');
     const overallFontStyleEl = document.getElementById('nytw_overall_font_style');
@@ -1209,6 +1224,19 @@ export function initDisplaySettingsTab() {
         }
         if (readingJustifyEl instanceof HTMLInputElement) {
             readingJustifyEl.checked = settings.readingJustify === true;
+        }
+        if (indentScopeEnabledEl instanceof HTMLInputElement) {
+            indentScopeEnabledEl.checked = settings.indentScopeEnabled === true;
+        }
+        if (indentScopeTagsEl instanceof HTMLInputElement
+            && document.activeElement !== indentScopeTagsEl) {
+            indentScopeTagsEl.value = String(settings.indentScopeTags || '');
+        }
+        if (indentScopeModeEl instanceof HTMLSelectElement) {
+            indentScopeModeEl.value = settings.indentScopeMode === 'exclude' ? 'exclude' : 'include';
+        }
+        if (indentScopeBoxEl instanceof HTMLElement) {
+            indentScopeBoxEl.hidden = settings.indentScopeEnabled !== true;
         }
         const diagBtn = document.getElementById('nytw_para_diag');
     const diagBox = document.getElementById('nytw_para_diag_box');
@@ -2052,6 +2080,32 @@ export function initDisplaySettingsTab() {
     });
 
     const themeAutoEl = document.getElementById('nytw_theme_auto_apply');
+    // 缩进生效范围
+    indentScopeEnabledEl?.addEventListener('change', () => {
+        if (!(indentScopeEnabledEl instanceof HTMLInputElement)) return;
+        settings.indentScopeEnabled = indentScopeEnabledEl.checked;
+        if (indentScopeBoxEl instanceof HTMLElement) {
+            indentScopeBoxEl.hidden = !indentScopeEnabledEl.checked;
+        }
+        saveSettingsDebounced();
+        applyReadingStyleNow();
+        scheduleScan({ full: true });
+    });
+
+    indentScopeModeEl?.addEventListener('change', () => {
+        if (!(indentScopeModeEl instanceof HTMLSelectElement)) return;
+        settings.indentScopeMode = indentScopeModeEl.value === 'exclude' ? 'exclude' : 'include';
+        saveSettingsDebounced();
+        scheduleScan({ full: true });
+    });
+
+    indentScopeTagsEl?.addEventListener('input', () => {
+        if (!(indentScopeTagsEl instanceof HTMLInputElement)) return;
+        settings.indentScopeTags = indentScopeTagsEl.value;
+        saveSettingsDebounced();
+        scheduleScan({ full: true });
+    });
+
     themeAutoEl?.addEventListener('change', () => {
         if (!(themeAutoEl instanceof HTMLInputElement)) return;
         settings.readingThemeAutoApply = themeAutoEl.checked;

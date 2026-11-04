@@ -58,6 +58,58 @@ const STREAMING_MESSAGE_CLASS = 'nytw-streaming';
 
 // 「包裹字符字体」当前生效的规则（由 applyFontSettings 解析后写入）
 let activeCustomRules = [];
+
+// 首行缩进范围：不在范围内的块会带上这个属性，CSS 里把 text-indent 归零
+const INDENT_OFF_ATTR = 'data-nytw-indent-off';
+const INDENT_BLOCK_SELECTOR = 'p, li, blockquote, .nytw-para-line';
+
+/** 把用户填的标签名整理成合法的 CSS 选择器列表 */
+function buildIndentScopeSelector() {
+    const raw = String(settings.indentScopeTags || '');
+    const names = raw
+        .split(/[,，\s]+/)
+        .map((part) => part.trim().replace(/^<+/, '').replace(/>+$/, '').replace(/\/.*$/, '').trim())
+        .filter((name) => /^[a-zA-Z][\w-]*$/.test(name));
+    if (!names.length) return '';
+    return Array.from(new Set(names)).join(',');
+}
+
+/**
+ * 只作用于首行缩进：
+ * include → 只有标签内的块保留缩进
+ * exclude → 标签内的块取消缩进
+ */
+export function applyIndentScope(containerEl) {
+    if (!containerEl || !(containerEl instanceof HTMLElement)) return;
+
+    const blocks = Array.from(containerEl.querySelectorAll(INDENT_BLOCK_SELECTOR));
+    if (!blocks.length) return;
+
+    const enabled = settings.readingStyleEnabled === true && settings.indentScopeEnabled === true;
+    const selector = enabled ? buildIndentScopeSelector() : '';
+
+    if (!enabled || !selector) {
+        for (const el of blocks) el.removeAttribute(INDENT_OFF_ATTR);
+        return;
+    }
+
+    const mode = settings.indentScopeMode === 'exclude' ? 'exclude' : 'include';
+
+    for (const el of blocks) {
+        let inside = false;
+        try {
+            inside = Boolean(el.closest(selector));
+        } catch {
+            inside = false;
+        }
+        const shouldIndent = mode === 'include' ? inside : !inside;
+        if (shouldIndent) {
+            el.removeAttribute(INDENT_OFF_ATTR);
+        } else {
+            el.setAttribute(INDENT_OFF_ATTR, '1');
+        }
+    }
+}
 const STREAM_RENDER_ATTR = 'data-nytw-stream-render';
 const STREAM_BUFFER_CLASS = 'nytw-stream-buffer';
 const STREAM_ANIM_ATTR = 'data-nytw-stream-anim';
@@ -537,6 +589,11 @@ function buildReadingStyleCss() {
     pushReadingDeclaration(bodyBlockDeclarations, values, ['bodyParagraphSpacing', 'overallParagraphSpacing'], 'margin-bottom', ['--nytw-body-paragraph-spacing', '--nytw-overall-paragraph-spacing']);
     pushReadingDeclaration(bodyBlockDeclarations, values, ['bodyTextIndent', 'overallTextIndent'], 'text-indent', ['--nytw-body-text-indent', '--nytw-overall-text-indent']);
     pushReadingRule(css, ['#chat .mes_text p', '#chat .mes_text li', '#chat .mes_text blockquote'], bodyBlockDeclarations);
+
+    // 缩进生效范围：不在范围内的块强制取消首行缩进
+    if (settings.indentScopeEnabled === true && hasAnyReadingStyleValue(values, ['bodyTextIndent', 'overallTextIndent'])) {
+        pushReadingRule(css, [`#chat .mes_text [${INDENT_OFF_ATTR}]`], ['text-indent:0 !important;']);
+    }
 
     const dialogueDeclarations = [];
     pushReadingDeclaration(dialogueDeclarations, values, ['dialogueFontSize', 'bodyFontSize', 'overallFontSize'], 'font-size', ['--nytw-dialogue-font-size', '--nytw-body-font-size', '--nytw-overall-font-size']);
@@ -2519,6 +2576,7 @@ function processContainerInner(containerEl, { enableTypewriter = true } = {}) {
             rules: activeCustomRules,
         });
         applyLocaleFonts(containerEl);
+        applyIndentScope(containerEl);
         return;
     }
 
@@ -2558,6 +2616,7 @@ function processContainerInner(containerEl, { enableTypewriter = true } = {}) {
     });
 
     applyLocaleFonts(containerEl);
+    applyIndentScope(containerEl);
 }
 
 function processContainer(containerEl) {
