@@ -1532,74 +1532,6 @@ export function initDisplaySettingsTab() {
         }
     };
 
-    let undoBarEl = null;
-    let undoBarTimer = 0;
-
-    const hideResetUndoBar = () => {
-        if (undoBarTimer) {
-            clearTimeout(undoBarTimer);
-            undoBarTimer = 0;
-        }
-        if (undoBarEl && undoBarEl.parentNode) undoBarEl.parentNode.removeChild(undoBarEl);
-        undoBarEl = null;
-    };
-
-    /** 换美化自动重置后的撤销条，停留 12 秒 */
-    const showResetUndoBar = (snapshot) => {
-        hideResetUndoBar();
-        if (!document.body) return;
-
-        const bar = document.createElement('div');
-        bar.setAttribute('style', [
-            'position:fixed',
-            'left:12px',
-            'right:12px',
-            'bottom:16px',
-            'z-index:2147483002',
-            'display:flex',
-            'align-items:center',
-            'gap:10px',
-            'padding:10px 12px',
-            'border-radius:10px',
-            'background:rgba(20,20,24,0.94)',
-            'border:1px solid rgba(255,255,255,0.18)',
-            'box-shadow:0 8px 24px rgba(0,0,0,0.4)',
-            'color:#fff',
-            'font-size:12px',
-            'line-height:1.5',
-        ].join(';'));
-
-        const text = document.createElement('span');
-        text.style.flex = '1 1 auto';
-        text.textContent = '已按新美化重置阅读样式（12 秒内可撤销）';
-
-        const undoBtn = document.createElement('button');
-        undoBtn.type = 'button';
-        undoBtn.textContent = '撤销';
-        undoBtn.setAttribute('style', [
-            'flex:0 0 auto',
-            'padding:5px 12px',
-            'border-radius:7px',
-            'border:1px solid rgba(140,185,255,0.7)',
-            'background:rgba(90,140,235,0.35)',
-            'color:#dfe9ff',
-            'font-size:12px',
-        ].join(';'));
-
-        undoBtn.addEventListener('click', () => {
-            applyReadingStyleSnapshot(snapshot);
-            saveSettingsDebounced();
-            applyReadingStyleNow();
-            hideResetUndoBar();
-        });
-
-        bar.appendChild(text);
-        bar.appendChild(undoBtn);
-        document.body.appendChild(bar);
-        undoBarEl = bar;
-        undoBarTimer = setTimeout(hideResetUndoBar, 12000);
-    };
-
     const applyThemeBindingForCurrentTheme = () => {
         if (settings.readingThemeAutoApply !== true) return;
         const name = getCurrentThemeName();
@@ -2258,7 +2190,7 @@ export function initDisplaySettingsTab() {
         updateThemeBindUi();
     });
 
-    // 酒馆美化切换时：有绑定就套用，没有绑定就重置（带撤销条）
+    // 酒馆美化切换时：有绑定就套用，没有绑定就重置为「全部继承」
     document.addEventListener('change', (event) => {
         if (event.target?.id !== 'themes') return;
         updateThemeBindUi();
@@ -2267,9 +2199,7 @@ export function initDisplaySettingsTab() {
         if (boundStyle) {
             if (settings.readingThemeAutoApply === true) applyThemeBindingForCurrentTheme();
         } else {
-            const beforeReset = getReadingStyleSnapshot();
             resetReadingStyle();
-            showResetUndoBar(beforeReset);
         }
     }, true);
 
