@@ -2267,10 +2267,15 @@ export function initDisplaySettingsTab() {
     const getCurrentStPresetName = () => {
         for (const id of ST_PRESET_SELECT_IDS) {
             const select = document.getElementById(id);
-            if (select instanceof HTMLSelectElement) {
-                const value = String(select.value || '').trim();
-                if (value) return value;
-            }
+            if (!(select instanceof HTMLSelectElement)) continue;
+            // 酒馆这个下拉的 value 是序号（比如 "81"），界面上显示的名字在 option 的文本里
+            const option = select.selectedOptions?.[0]
+                || Array.from(select.options).find((opt) => opt.selected)
+                || null;
+            const label = String(option?.textContent || '').trim();
+            if (label) return label;
+            const value = String(select.value || '').trim();
+            if (value) return value;
         }
         return '';
     };
