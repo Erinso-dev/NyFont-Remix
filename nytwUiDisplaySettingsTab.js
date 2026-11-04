@@ -2060,11 +2060,20 @@ export function initDisplaySettingsTab() {
         updateThemeBindUi();
     });
 
-    // 酒馆主题切换（#themes 下拉）时更新绑定状态并按需套用
+    // 酒馆主题切换（#themes 下拉）时：
+    //   - 有绑定的美化 → 套用它保存的样式
+    //   - 没有绑定 → 回到「全部继承」，从美化自己的排版开始改
     document.addEventListener('change', (event) => {
         if (event.target?.id !== 'themes') return;
         updateThemeBindUi();
-        applyThemeBindingForCurrentTheme();
+        const themeName = getCurrentThemeName();
+        const boundStyle = themeName ? getThemeBindings()[themeName] : null;
+        if (boundStyle) {
+            if (settings.readingThemeAutoApply === true) applyThemeBindingForCurrentTheme();
+        } else {
+            // 没绑定的美化：清掉上一套阅读样式，避免继承过来
+            resetReadingStyle();
+        }
     }, true);
 
     setTimeout(() => {

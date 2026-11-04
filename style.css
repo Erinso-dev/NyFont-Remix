@@ -3792,3 +3792,19 @@
 .nytw-font-group-header.is-collapsed .nytw-group-label {
     opacity: 0.75;
 }
+
+/* 标签文字固定成高对比度，不再跟着美化变成黑色 */
+#nytw_settings_root .nytw-settings-container .nytw-label,
+#nytw_settings_root .nytw-settings-container .nytw-row--nested .nytw-label {
+    color: rgba(255, 255, 255, 0.94) !important;
+}
+
+#nytw_settings_root.nytw-fg-dark .nytw-settings-container .nytw-label,
+#nytw_settings_root.nytw-fg-dark .nytw-settings-container .nytw-row--nested .nytw-label {
+    color: #232326 !important;
+}
+
+/* 次级说明文字同样保证可读 */
+#nytw_settings_root .nytw-settings-container .nytw-help {
+    color: rgba(255, 255, 255, 0.72) !important;
+}
