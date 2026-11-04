@@ -383,8 +383,8 @@ export function initDisplaySettingsTab() {
                         <input id="nytw_reading_preset_file" type="file" accept="application/json,.json" style="display:none" />
                         <hr style="opacity:.12;margin:8px 0" />
                         <div class="nytw-reader-preset-row">
-                            <label for="nytw_theme_bind_name">当前预设</label>
-                            <input id="nytw_theme_bind_name" class="text_pole nytw-reader-text-input" type="text" readonly placeholder="未识别到预设名称" />
+                            <label for="nytw_theme_bind_name">当前美化</label>
+                            <input id="nytw_theme_bind_name" class="text_pole nytw-reader-text-input" type="text" readonly placeholder="未识别到美化名称" />
                             <button id="nytw_theme_bind_save" class="menu_button nytw-reader-small-btn nytw-preset-btn" type="button">绑定</button>
                         </div>
                         <p id="nytw_theme_bind_status" class="nytw-preset-hint" role="status"></p>
@@ -394,7 +394,7 @@ export function initDisplaySettingsTab() {
                         </div>
                         <label class="nytw-preset-font-option" for="nytw_theme_auto_apply">
                             <input id="nytw_theme_auto_apply" type="checkbox" />
-                            <span>切换预设时自动套用该预设绑定的样式</span>
+                            <span>切换美化时自动套用该美化绑定的样式</span>
                         </label>
                     </div>
                 `)}
@@ -447,6 +447,22 @@ export function initDisplaySettingsTab() {
                         </select>
                     </div>
                     <p class="nytw-preset-hint" id="nytw_indent_scope_hint">勾选后，只有被这些标签包住的段落才有首行缩进；标签外面的（比如居中的时间栏）不缩进。标签可以写多个，用逗号隔开。</p>
+
+                    <hr style="opacity:.12;margin:8px 0" />
+                    <div class="nytw-reader-preset-row">
+                        <label for="nytw_scope_bind_name">当前预设</label>
+                        <input id="nytw_scope_bind_name" class="text_pole nytw-reader-text-input" type="text" readonly placeholder="未识别到预设名称" />
+                        <button id="nytw_scope_bind_save" class="menu_button nytw-reader-small-btn nytw-preset-btn" type="button">保存到预设</button>
+                    </div>
+                    <p id="nytw_scope_bind_status" class="nytw-preset-hint" role="status"></p>
+                    <div class="nytw-reader-preset-actions">
+                        <button id="nytw_scope_bind_apply" class="menu_button nytw-reader-small-btn nytw-preset-btn" type="button">套用</button>
+                        <button id="nytw_scope_bind_remove" class="menu_button nytw-reader-small-btn nytw-preset-btn" type="button">解除</button>
+                    </div>
+                    <label class="nytw-preset-font-option" for="nytw_scope_auto_apply">
+                        <input id="nytw_scope_auto_apply" type="checkbox" />
+                        <span>切换酒馆预设时自动套用该预设的缩进范围</span>
+                    </label>
 <label class="nytw-preset-font-option" for="nytw_split_lines_to_paragraphs"><input id="nytw_split_lines_to_paragraphs" type="checkbox" /><span>每行独立成段（逐行首行缩进）</span></label>
                     <div class="nytw-reader-preset-actions">
                         <button id="nytw_para_diag" class="menu_button nytw-reader-small-btn nytw-preset-btn" type="button">
@@ -1455,27 +1471,19 @@ export function initDisplaySettingsTab() {
     /* ---------------- 美化绑定 ---------------- */
 
     const getCurrentThemeName = () => {
-        // 这里绑定的是「酒馆预设」，不是美化
-        const candidates = [
-            'settings_preset_openai',
-            'settings_preset',
-            'settings_preset_textgenerationwebui',
-        ];
-        for (const id of candidates) {
-            const select = document.getElementById(id);
-            if (select instanceof HTMLSelectElement) {
-                const value = String(select.value || '').trim();
-                if (value) return value;
-            }
+        const select = document.getElementById('themes');
+        if (select instanceof HTMLSelectElement && String(select.value || '').trim()) {
+            return String(select.value).trim();
         }
-        return '';
+        const checked = document.querySelector('#themes option:checked');
+        return String(checked?.value || '').trim();
     };
 
     const getThemeBindings = () => {
-        if (!settings.readingPresetBindings || typeof settings.readingPresetBindings !== 'object' || Array.isArray(settings.readingPresetBindings)) {
-            settings.readingPresetBindings = {};
+        if (!settings.readingThemeBindings || typeof settings.readingThemeBindings !== 'object' || Array.isArray(settings.readingThemeBindings)) {
+            settings.readingThemeBindings = {};
         }
-        return settings.readingPresetBindings;
+        return settings.readingThemeBindings;
     };
 
     const updateThemeBindUi = () => {
@@ -1492,14 +1500,14 @@ export function initDisplaySettingsTab() {
 
         if (statusEl) {
             statusEl.textContent = !name
-                ? '没能读到当前预设名称，先在酒馆里选一个预设。'
-                : (bound ? '这个预设已保存样式，切换回来会自动恢复。' : '这个预设还没有保存样式。');
+                ? '没能读到当前美化名称，先在酒馆里应用一个主题。'
+                : (bound ? '这个美化已保存样式，切换回来会自动恢复。' : '这个美化还没有保存样式。');
         }
         if (saveBtn instanceof HTMLButtonElement) saveBtn.disabled = !name;
         if (applyBtn instanceof HTMLButtonElement) applyBtn.disabled = !bound;
         if (removeBtn instanceof HTMLButtonElement) removeBtn.disabled = !bound;
         if (autoEl instanceof HTMLInputElement) {
-            autoEl.checked = settings.readingPresetAutoApply === true;
+            autoEl.checked = settings.readingThemeAutoApply === true;
             autoEl.disabled = !name;
         }
     };
@@ -1573,7 +1581,7 @@ export function initDisplaySettingsTab() {
     };
 
     const applyThemeBindingForCurrentTheme = () => {
-        if (settings.readingPresetAutoApply !== true) return;
+        if (settings.readingThemeAutoApply !== true) return;
         const name = getCurrentThemeName();
         if (!name) return;
         const style = getThemeBindings()[name];
@@ -2231,29 +2239,20 @@ export function initDisplaySettingsTab() {
 
     themeAutoEl?.addEventListener('change', () => {
         if (!(themeAutoEl instanceof HTMLInputElement)) return;
-        settings.readingPresetAutoApply = themeAutoEl.checked;
+        settings.readingThemeAutoApply = themeAutoEl.checked;
         saveSettingsDebounced();
         if (themeAutoEl.checked) applyThemeBindingForCurrentTheme();
         updateThemeBindUi();
     });
 
-    // 酒馆预设切换时：
-    //   - 有绑定的预设 → 套用它保存的样式
-    //   - 没有绑定 → 回到「全部继承」，从预设自己的排版开始改（12 秒内可撤销）
-    const PRESET_SELECT_IDS = new Set([
-        'settings_preset_openai',
-        'settings_preset',
-        'settings_preset_textgenerationwebui',
-    ]);
-
+    // 酒馆美化切换时：有绑定就套用，没有绑定就重置（带撤销条）
     document.addEventListener('change', (event) => {
-        const id = event.target?.id || '';
-        if (!PRESET_SELECT_IDS.has(id)) return;
+        if (event.target?.id !== 'themes') return;
         updateThemeBindUi();
-        const presetName = getCurrentThemeName();
-        const boundStyle = presetName ? getThemeBindings()[presetName] : null;
+        const themeName = getCurrentThemeName();
+        const boundStyle = themeName ? getThemeBindings()[themeName] : null;
         if (boundStyle) {
-            if (settings.readingPresetAutoApply === true) applyThemeBindingForCurrentTheme();
+            if (settings.readingThemeAutoApply === true) applyThemeBindingForCurrentTheme();
         } else {
             const beforeReset = getReadingStyleSnapshot();
             resetReadingStyle();
@@ -2261,15 +2260,126 @@ export function initDisplaySettingsTab() {
         }
     }, true);
 
-    // 美化切换不再影响阅读样式（阅读样式现在跟酒馆预设走）
+    /* ---------------- 预设 · 缩进范围绑定 ---------------- */
+
+    const ST_PRESET_SELECT_IDS = ['settings_preset_openai', 'settings_preset', 'settings_preset_textgenerationwebui'];
+
+    const getCurrentStPresetName = () => {
+        for (const id of ST_PRESET_SELECT_IDS) {
+            const select = document.getElementById(id);
+            if (select instanceof HTMLSelectElement) {
+                const value = String(select.value || '').trim();
+                if (value) return value;
+            }
+        }
+        return '';
+    };
+
+    const getScopeBindings = () => {
+        if (!settings.indentPresetBindings || typeof settings.indentPresetBindings !== 'object' || Array.isArray(settings.indentPresetBindings)) {
+            settings.indentPresetBindings = {};
+        }
+        return settings.indentPresetBindings;
+    };
+
+    const getScopeSnapshot = () => ({
+        indentScopeEnabled: settings.indentScopeEnabled === true,
+        indentScopeTags: String(settings.indentScopeTags || ''),
+        indentScopeMode: settings.indentScopeMode === 'exclude' ? 'exclude' : 'include',
+    });
+
+    const applyScopeSnapshot = (snapshot) => {
+        if (!snapshot || typeof snapshot !== 'object') return;
+        settings.indentScopeEnabled = snapshot.indentScopeEnabled === true;
+        settings.indentScopeTags = String(snapshot.indentScopeTags || '');
+        settings.indentScopeMode = snapshot.indentScopeMode === 'exclude' ? 'exclude' : 'include';
+        saveSettingsDebounced();
+        applyReadingStyleNow();
+        scheduleScan({ full: true });
+    };
+
+    const updateScopeBindUi = () => {
+        const name = getCurrentStPresetName();
+        const nameEl = document.getElementById('nytw_scope_bind_name');
+        const statusEl = document.getElementById('nytw_scope_bind_status');
+        const applyBtn = document.getElementById('nytw_scope_bind_apply');
+        const removeBtn = document.getElementById('nytw_scope_bind_remove');
+        const saveBtn = document.getElementById('nytw_scope_bind_save');
+        const autoEl = document.getElementById('nytw_scope_auto_apply');
+
+        if (nameEl instanceof HTMLInputElement) nameEl.value = name;
+        const bound = Boolean(name && getScopeBindings()[name]);
+
+        if (statusEl) {
+            statusEl.textContent = !name
+                ? '没能读到当前预设名称，先在酒馆里选一个预设。'
+                : (bound ? '这个预设已保存缩进范围，切换回来会恢复。' : '这个预设还没有保存缩进范围。');
+        }
+        if (saveBtn instanceof HTMLButtonElement) saveBtn.disabled = !name;
+        if (applyBtn instanceof HTMLButtonElement) applyBtn.disabled = !bound;
+        if (removeBtn instanceof HTMLButtonElement) removeBtn.disabled = !bound;
+        if (autoEl instanceof HTMLInputElement) {
+            autoEl.checked = settings.indentPresetAutoApply === true;
+            autoEl.disabled = !name;
+        }
+    };
+
+    const applyScopeBindingForCurrentPreset = () => {
+        if (settings.indentPresetAutoApply !== true) return;
+        const name = getCurrentStPresetName();
+        if (!name) return;
+        const snapshot = getScopeBindings()[name];
+        if (!snapshot) return;
+        applyScopeSnapshot(snapshot);
+    };
+
+    const ST_PRESET_SELECT_SET = new Set(ST_PRESET_SELECT_IDS);
+
     document.addEventListener('change', (event) => {
-        if (event.target?.id !== 'themes') return;
-        updateThemeBindUi();
+        if (!ST_PRESET_SELECT_SET.has(event.target?.id || '')) return;
+        updateScopeBindUi();
+        applyScopeBindingForCurrentPreset();
     }, true);
+
+    document.getElementById('nytw_scope_bind_save')?.addEventListener('click', () => {
+        const name = getCurrentStPresetName();
+        if (!name) return;
+        getScopeBindings()[name] = getScopeSnapshot();
+        saveSettingsDebounced();
+        updateScopeBindUi();
+    });
+
+    document.getElementById('nytw_scope_bind_apply')?.addEventListener('click', () => {
+        const name = getCurrentStPresetName();
+        if (!name) return;
+        const snapshot = getScopeBindings()[name];
+        if (snapshot) applyScopeSnapshot(snapshot);
+    });
+
+    document.getElementById('nytw_scope_bind_remove')?.addEventListener('click', () => {
+        const name = getCurrentStPresetName();
+        if (!name) return;
+        const bindings = getScopeBindings();
+        if (Object.prototype.hasOwnProperty.call(bindings, name)) {
+            delete bindings[name];
+            saveSettingsDebounced();
+        }
+        updateScopeBindUi();
+    });
+
+    document.getElementById('nytw_scope_auto_apply')?.addEventListener('change', (event) => {
+        const el = event.target;
+        if (!(el instanceof HTMLInputElement)) return;
+        settings.indentPresetAutoApply = el.checked;
+        saveSettingsDebounced();
+        if (el.checked) applyScopeBindingForCurrentPreset();
+        updateScopeBindUi();
+    });
 
     setTimeout(() => {
         updateThemeBindUi();
         applyThemeBindingForCurrentTheme();
+        updateScopeBindUi();
     }, 0);
 
     readingStyleResetEl?.addEventListener('click', resetReadingStyle);

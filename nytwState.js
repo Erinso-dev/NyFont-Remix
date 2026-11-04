@@ -81,9 +81,9 @@ export const DEFAULT_SETTINGS = {
     indentScopeMode: 'include',
     indentScopeTagHistory: [],
     readingThemeBindings: {},
-    // 阅读样式 → 酒馆预设 的绑定
-    readingPresetBindings: {},
-    readingPresetAutoApply: false,
+    // 缩进范围 → 酒馆预设 的绑定（只存开关/标签/匹配方式）
+    indentPresetBindings: {},
+    indentPresetAutoApply: false,
     readingThemeAutoApply: false,
     overallFontWeight: '',
     overallFontStyle: '',
@@ -397,12 +397,12 @@ function applyDefaultSettings() {
         .filter(Boolean)
         .slice(0, 30);
     settings.readingThemeAutoApply = settings.readingThemeAutoApply === true;
-    settings.readingPresetAutoApply = settings.readingPresetAutoApply === true;
+    settings.indentPresetAutoApply = settings.indentPresetAutoApply === true;
     if (!settings.readingThemeBindings || typeof settings.readingThemeBindings !== "object" || Array.isArray(settings.readingThemeBindings)) {
         settings.readingThemeBindings = {};
     }
-    if (!settings.readingPresetBindings || typeof settings.readingPresetBindings !== 'object' || Array.isArray(settings.readingPresetBindings)) {
-        settings.readingPresetBindings = {};
+    if (!settings.indentPresetBindings || typeof settings.indentPresetBindings !== 'object' || Array.isArray(settings.indentPresetBindings)) {
+        settings.indentPresetBindings = {};
     }
     settings.overallParagraphSpacing = clampOptionalParagraphSpacing(settings.overallParagraphSpacing);
     settings.overallTextIndent = clampOptionalTextIndent(settings.overallTextIndent);
