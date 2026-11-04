@@ -3808,3 +3808,72 @@
 #nytw_settings_root .nytw-settings-container .nytw-help {
     color: rgba(255, 255, 255, 0.72) !important;
 }
+
+/* ============ 玻璃质感（不改变排版，只换材质） ============ */
+
+#nytw_settings_root .nytw-settings-container {
+    position: relative;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+    border-radius: 12px !important;
+    box-shadow:
+        0 10px 32px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+}
+
+/* 真正负责“磨砂”的是这一层：只模糊背后的内容，
+   不会让内部的弹层失去 fixed 定位能力 */
+#nytw_settings_root .nytw-settings-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    backdrop-filter: blur(22px) saturate(170%);
+    -webkit-backdrop-filter: blur(22px) saturate(170%);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.02));
+    pointer-events: none;
+    z-index: 0;
+}
+
+#nytw_settings_root .nytw-settings-container > * {
+    position: relative;
+    z-index: 1;
+}
+
+#nytw_settings_root .nytw-settings-container .nytw-sidebar {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+#nytw_settings_root .nytw-settings-container .nytw-content-area {
+    background: transparent !important;
+}
+
+/* 卡片：极淡的一层，保持玻璃层次 */
+#nytw_settings_root .nytw-settings-container .nytw-reading-card,
+#nytw_settings_root .nytw-settings-container .nytw-reading-subcard,
+#nytw_settings_root .nytw-settings-container .nytw-card,
+#nytw_settings_root .nytw-settings-container .nytw-row--nested {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.10) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
+}
+
+/* 开关：去掉左侧那个小白点，改成整条染色来表示状态 */
+#nytw_settings_root .nytw-switch-slider::after {
+    display: none !important;
+}
+
+#nytw_settings_root .nytw-switch-slider {
+    background: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+#nytw_settings_root .nytw-switch input:checked + .nytw-switch-slider {
+    background: linear-gradient(135deg, rgba(120, 170, 255, 0.75), rgba(90, 140, 235, 0.55));
+    border-color: rgba(140, 185, 255, 0.75);
+    box-shadow:
+        0 0 12px rgba(110, 160, 255, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
