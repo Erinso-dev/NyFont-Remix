@@ -383,8 +383,8 @@ export function initDisplaySettingsTab() {
                         <input id="nytw_reading_preset_file" type="file" accept="application/json,.json" style="display:none" />
                         <hr style="opacity:.12;margin:8px 0" />
                         <div class="nytw-reader-preset-row">
-                            <label for="nytw_theme_bind_name">当前美化</label>
-                            <input id="nytw_theme_bind_name" class="text_pole nytw-reader-text-input" type="text" readonly placeholder="未识别到美化名称" />
+                            <label for="nytw_theme_bind_name">当前预设</label>
+                            <input id="nytw_theme_bind_name" class="text_pole nytw-reader-text-input" type="text" readonly placeholder="未识别到预设名称" />
                             <button id="nytw_theme_bind_save" class="menu_button nytw-reader-small-btn nytw-preset-btn" type="button">绑定</button>
                         </div>
                         <p id="nytw_theme_bind_status" class="nytw-preset-hint" role="status"></p>
@@ -394,7 +394,7 @@ export function initDisplaySettingsTab() {
                         </div>
                         <label class="nytw-preset-font-option" for="nytw_theme_auto_apply">
                             <input id="nytw_theme_auto_apply" type="checkbox" />
-                            <span>切换美化时自动套用该美化绑定的样式</span>
+                            <span>切换预设时自动套用该预设绑定的样式</span>
                         </label>
                     </div>
                 `)}
@@ -1455,19 +1455,27 @@ export function initDisplaySettingsTab() {
     /* ---------------- 美化绑定 ---------------- */
 
     const getCurrentThemeName = () => {
-        const select = document.getElementById('themes');
-        if (select instanceof HTMLSelectElement && String(select.value || '').trim()) {
-            return String(select.value).trim();
+        // 这里绑定的是「酒馆预设」，不是美化
+        const candidates = [
+            'settings_preset_openai',
+            'settings_preset',
+            'settings_preset_textgenerationwebui',
+        ];
+        for (const id of candidates) {
+            const select = document.getElementById(id);
+            if (select instanceof HTMLSelectElement) {
+                const value = String(select.value || '').trim();
+                if (value) return value;
+            }
         }
-        const checked = document.querySelector('#themes option:checked');
-        return String(checked?.value || '').trim();
+        return '';
     };
 
     const getThemeBindings = () => {
-        if (!settings.readingThemeBindings || typeof settings.readingThemeBindings !== 'object' || Array.isArray(settings.readingThemeBindings)) {
-            settings.readingThemeBindings = {};
+        if (!settings.readingPresetBindings || typeof settings.readingPresetBindings !== 'object' || Array.isArray(settings.readingPresetBindings)) {
+            settings.readingPresetBindings = {};
         }
-        return settings.readingThemeBindings;
+        return settings.readingPresetBindings;
     };
 
     const updateThemeBindUi = () => {
@@ -1484,14 +1492,14 @@ export function initDisplaySettingsTab() {
 
         if (statusEl) {
             statusEl.textContent = !name
-                ? '没能读到当前美化名称，先在酒馆里应用一个主题。'
-                : (bound ? '这个美化已保存样式，切换回来会自动恢复。' : '这个美化还没有保存样式。');
+                ? '没能读到当前预设名称，先在酒馆里选一个预设。'
+                : (bound ? '这个预设已保存样式，切换回来会自动恢复。' : '这个预设还没有保存样式。');
         }
         if (saveBtn instanceof HTMLButtonElement) saveBtn.disabled = !name;
         if (applyBtn instanceof HTMLButtonElement) applyBtn.disabled = !bound;
         if (removeBtn instanceof HTMLButtonElement) removeBtn.disabled = !bound;
         if (autoEl instanceof HTMLInputElement) {
-            autoEl.checked = settings.readingThemeAutoApply === true;
+            autoEl.checked = settings.readingPresetAutoApply === true;
             autoEl.disabled = !name;
         }
     };
@@ -1565,7 +1573,7 @@ export function initDisplaySettingsTab() {
     };
 
     const applyThemeBindingForCurrentTheme = () => {
-        if (settings.readingThemeAutoApply !== true) return;
+        if (settings.readingPresetAutoApply !== true) return;
         const name = getCurrentThemeName();
         if (!name) return;
         const style = getThemeBindings()[name];
@@ -2223,29 +2231,40 @@ export function initDisplaySettingsTab() {
 
     themeAutoEl?.addEventListener('change', () => {
         if (!(themeAutoEl instanceof HTMLInputElement)) return;
-        settings.readingThemeAutoApply = themeAutoEl.checked;
+        settings.readingPresetAutoApply = themeAutoEl.checked;
         saveSettingsDebounced();
         if (themeAutoEl.checked) applyThemeBindingForCurrentTheme();
         updateThemeBindUi();
     });
 
-    // 酒馆主题切换（#themes 下拉）时：
-    //   - 有绑定的美化 → 套用它保存的样式
-    //   - 没有绑定 → 回到「全部继承」，从美化自己的排版开始改
+    // 酒馆预设切换时：
+    //   - 有绑定的预设 → 套用它保存的样式
+    //   - 没有绑定 → 回到「全部继承」，从预设自己的排版开始改（12 秒内可撤销）
+    const PRESET_SELECT_IDS = new Set([
+        'settings_preset_openai',
+        'settings_preset',
+        'settings_preset_textgenerationwebui',
+    ]);
+
     document.addEventListener('change', (event) => {
-        if (event.target?.id !== 'themes') return;
+        const id = event.target?.id || '';
+        if (!PRESET_SELECT_IDS.has(id)) return;
         updateThemeBindUi();
-        const themeName = getCurrentThemeName();
-        const boundStyle = themeName ? getThemeBindings()[themeName] : null;
+        const presetName = getCurrentThemeName();
+        const boundStyle = presetName ? getThemeBindings()[presetName] : null;
         if (boundStyle) {
-            if (settings.readingThemeAutoApply === true) applyThemeBindingForCurrentTheme();
+            if (settings.readingPresetAutoApply === true) applyThemeBindingForCurrentTheme();
         } else {
-            // 没绑定的美化：清掉上一套阅读样式，避免继承过来
-            // 清之前先留一份，给用户一个撤销的机会
             const beforeReset = getReadingStyleSnapshot();
             resetReadingStyle();
             showResetUndoBar(beforeReset);
         }
+    }, true);
+
+    // 美化切换不再影响阅读样式（阅读样式现在跟酒馆预设走）
+    document.addEventListener('change', (event) => {
+        if (event.target?.id !== 'themes') return;
+        updateThemeBindUi();
     }, true);
 
     setTimeout(() => {

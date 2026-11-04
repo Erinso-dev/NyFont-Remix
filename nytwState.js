@@ -81,6 +81,9 @@ export const DEFAULT_SETTINGS = {
     indentScopeMode: 'include',
     indentScopeTagHistory: [],
     readingThemeBindings: {},
+    // 阅读样式 → 酒馆预设 的绑定
+    readingPresetBindings: {},
+    readingPresetAutoApply: false,
     readingThemeAutoApply: false,
     overallFontWeight: '',
     overallFontStyle: '',
@@ -394,8 +397,12 @@ function applyDefaultSettings() {
         .filter(Boolean)
         .slice(0, 30);
     settings.readingThemeAutoApply = settings.readingThemeAutoApply === true;
+    settings.readingPresetAutoApply = settings.readingPresetAutoApply === true;
     if (!settings.readingThemeBindings || typeof settings.readingThemeBindings !== "object" || Array.isArray(settings.readingThemeBindings)) {
         settings.readingThemeBindings = {};
+    }
+    if (!settings.readingPresetBindings || typeof settings.readingPresetBindings !== 'object' || Array.isArray(settings.readingPresetBindings)) {
+        settings.readingPresetBindings = {};
     }
     settings.overallParagraphSpacing = clampOptionalParagraphSpacing(settings.overallParagraphSpacing);
     settings.overallTextIndent = clampOptionalTextIndent(settings.overallTextIndent);
