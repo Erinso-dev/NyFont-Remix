@@ -390,7 +390,12 @@ function applyDefaultSettings() {
     settings.splitLinesToParagraphs = settings.splitLinesToParagraphs === true;
     settings.indentScopeEnabled = settings.indentScopeEnabled === true;
     settings.indentScopeTags = String(settings.indentScopeTags || '').trim();
-    settings.indentScopeMode = settings.indentScopeMode === 'exclude' ? 'exclude' : 'include';
+    // 白名单模式已移除：旧配置若还是 include，转成 exclude 并清空标签，
+    // 避免「原来的正文标签」被当成排除项，把正文本身排除掉
+    if (settings.indentScopeMode !== 'exclude') {
+        settings.indentScopeMode = 'exclude';
+        settings.indentScopeTags = '';
+    }
     if (!Array.isArray(settings.indentScopeTagHistory)) settings.indentScopeTagHistory = [];
     settings.indentScopeTagHistory = settings.indentScopeTagHistory
         .map((item) => String(item || '').replace(/^<+|>+$/g, '').trim())

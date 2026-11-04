@@ -93,24 +93,21 @@ export function applyIndentScope(containerEl) {
         return;
     }
 
-    const mode = settings.indentScopeMode === 'exclude' ? 'exclude' : 'include';
-
     for (const el of blocks) {
-        let inside = false;
+        let hit = false;
         try {
-            // 两种都算在范围内：
+            // 命中的判定看两个方向：
             //   1) 自己或祖先是这些标签（文字被标签包住）
-            //   2) 自己内部含有这些标签（<p><content>…</content></p> 这种，
-            //      文字其实在 content 里，但 content 是 p 的子元素）
-            inside = Boolean(el.closest(selector) || el.querySelector(selector));
+            //   2) 自己内部含有这些标签（<p><content>…</content></p> 这种）
+            hit = Boolean(el.closest(selector) || el.querySelector(selector));
         } catch {
-            inside = false;
+            hit = false;
         }
-        const shouldIndent = mode === 'include' ? inside : !inside;
-        if (shouldIndent) {
-            el.removeAttribute(INDENT_OFF_ATTR);
-        } else {
+        // 现在只有「排除」语义：命中的不缩进，其余照常缩进
+        if (hit) {
             el.setAttribute(INDENT_OFF_ATTR, '1');
+        } else {
+            el.removeAttribute(INDENT_OFF_ATTR);
         }
     }
 }

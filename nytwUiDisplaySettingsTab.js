@@ -437,16 +437,12 @@ export function initDisplaySettingsTab() {
                     <div class="nytw-style-grid nytw-style-grid--3"><div class="nytw-typo-type"><i class="fa-solid fa-quote-left"></i> 对话</div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_dialogue_paragraph_spacing" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0" max="6" step="0.05" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div><div class="nytw-stepper"><button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button><input id="nytw_dialogue_text_indent" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0" max="8" step="0.25" /><button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button></div></div>
                                         <label class="nytw-preset-font-option" for="nytw_indent_scope_enabled"><input id="nytw_indent_scope_enabled" type="checkbox" /><span>首行缩进只作用于指定标签内</span></label>
                     <div id="nytw_indent_scope_box" class="nytw-style-grid nytw-style-grid--2" hidden>
-                        <div class="nytw-typo-type"><i class="fa-solid fa-tag"></i> 格式标签</div>
-                        <input id="nytw_indent_scope_tags" type="text" class="text_pole nytw-input" placeholder="如 content，多个用逗号分隔" autocomplete="off" list="nytw_indent_scope_tag_list" />
+                        <div class="nytw-typo-type"><i class="fa-solid fa-tag"></i> 排除标签</div>
+                        <input id="nytw_indent_scope_tags" type="text" class="text_pole nytw-input" placeholder="如 center，多个用逗号分隔" autocomplete="off" list="nytw_indent_scope_tag_list" />
                         <datalist id="nytw_indent_scope_tag_list"></datalist>
-                        <div class="nytw-typo-type"><i class="fa-solid fa-filter"></i> 匹配方式</div>
-                        <select id="nytw_indent_scope_mode" class="text_pole nytw-input">
-                            <option value="include">只在这些标签内缩进</option>
-                            <option value="exclude">除了这些标签都缩进</option>
-                        </select>
                     </div>
-                    <p class="nytw-preset-hint" id="nytw_indent_scope_hint">勾选后，只有被这些标签包住的段落才有首行缩进；标签外面的（比如居中的时间栏）不缩进。标签可以写多个，用逗号隔开。</p>
+                    <p class="nytw-preset-hint" id="nytw_indent_scope_hint">勾选后，被这些标签包住的段落**不缩进**，其余正文照常缩进。适合把时间栏、状态栏这类不该缩进的部分排除掉。<br />
+                        标签可以写多个，用逗号或空格隔开，命中任意一个即生效；标签里嵌套别的标签时，内层也算命中。</p>
 
                     <hr style="opacity:.12;margin:8px 0" />
                     <div class="nytw-reader-preset-row">
@@ -713,7 +709,7 @@ export function initDisplaySettingsTab() {
     const readingJustifyEl = document.getElementById('nytw_reading_justify');
     const indentScopeEnabledEl = document.getElementById('nytw_indent_scope_enabled');
     const indentScopeTagsEl = document.getElementById('nytw_indent_scope_tags');
-    const indentScopeModeEl = document.getElementById('nytw_indent_scope_mode');
+
     const indentScopeBoxEl = document.getElementById('nytw_indent_scope_box');
     const indentScopeTagListEl = document.getElementById('nytw_indent_scope_tag_list');
 
@@ -1288,9 +1284,6 @@ export function initDisplaySettingsTab() {
         if (indentScopeTagsEl instanceof HTMLInputElement
             && document.activeElement !== indentScopeTagsEl) {
             indentScopeTagsEl.value = String(settings.indentScopeTags || '');
-        }
-        if (indentScopeModeEl instanceof HTMLSelectElement) {
-            indentScopeModeEl.value = settings.indentScopeMode === 'exclude' ? 'exclude' : 'include';
         }
         if (indentScopeBoxEl instanceof HTMLElement) {
             indentScopeBoxEl.hidden = settings.indentScopeEnabled !== true;
@@ -2245,13 +2238,6 @@ export function initDisplaySettingsTab() {
         scheduleScan({ full: true });
     });
 
-    indentScopeModeEl?.addEventListener('change', () => {
-        if (!(indentScopeModeEl instanceof HTMLSelectElement)) return;
-        settings.indentScopeMode = indentScopeModeEl.value === 'exclude' ? 'exclude' : 'include';
-        saveSettingsDebounced();
-        scheduleScan({ full: true });
-    });
-
     indentScopeTagsEl?.addEventListener('input', () => {
         if (!(indentScopeTagsEl instanceof HTMLInputElement)) return;
         settings.indentScopeTags = indentScopeTagsEl.value;
@@ -2317,7 +2303,7 @@ export function initDisplaySettingsTab() {
     const getScopeSnapshot = () => ({
         indentScopeEnabled: settings.indentScopeEnabled === true,
         indentScopeTags: String(settings.indentScopeTags || ''),
-        indentScopeMode: settings.indentScopeMode === 'exclude' ? 'exclude' : 'include',
+        indentScopeMode: 'exclude',
     });
 
     const applyScopeSnapshot = (snapshot) => {
