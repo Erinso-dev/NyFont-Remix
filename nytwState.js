@@ -79,6 +79,7 @@ export const DEFAULT_SETTINGS = {
     indentScopeEnabled: false,
     indentScopeTags: 'content',
     indentScopeMode: 'include',
+    indentScopeTagHistory: [],
     readingThemeBindings: {},
     readingThemeAutoApply: false,
     overallFontWeight: '',
@@ -387,6 +388,11 @@ function applyDefaultSettings() {
     settings.indentScopeEnabled = settings.indentScopeEnabled === true;
     settings.indentScopeTags = String(settings.indentScopeTags || '').trim();
     settings.indentScopeMode = settings.indentScopeMode === 'exclude' ? 'exclude' : 'include';
+    if (!Array.isArray(settings.indentScopeTagHistory)) settings.indentScopeTagHistory = [];
+    settings.indentScopeTagHistory = settings.indentScopeTagHistory
+        .map((item) => String(item || '').replace(/^<+|>+$/g, '').trim())
+        .filter(Boolean)
+        .slice(0, 30);
     settings.readingThemeAutoApply = settings.readingThemeAutoApply === true;
     if (!settings.readingThemeBindings || typeof settings.readingThemeBindings !== "object" || Array.isArray(settings.readingThemeBindings)) {
         settings.readingThemeBindings = {};

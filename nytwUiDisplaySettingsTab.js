@@ -33,6 +33,9 @@ const READING_STYLE_PRESET_SCHEMA = 'Ny-font-manager.reading-style-preset';
 const READING_STYLE_PRESET_VERSION = 4;
 const READING_COLOR_PICKER_FALLBACK = '#ffffff';
 
+// 这三项只跟着「预设」走，不跟着「美化绑定」走
+const INDENT_SCOPE_KEYS = ["indentScopeEnabled", "indentScopeTags", "indentScopeMode"];
+
 const READING_STYLE_KEYS = [
     'readingStyleEnabled',
     'overallFontSize',
@@ -110,6 +113,9 @@ function buildPresetExportFileName(name) {
 function normalizeReadingStyleValue(key, value) {
     if (key === 'readingStyleEnabled') return value === true;
     if (key === 'readingJustify' || key === 'splitLinesToParagraphs') return value === true;
+    if (key === 'indentScopeEnabled') return value === true;
+    if (key === 'indentScopeTags') return String(value || '').trim();
+    if (key === 'indentScopeMode') return value === 'exclude' ? 'exclude' : 'include';
     if (key === 'readingPadLeft' || key === 'readingPadRight') return clampOptionalReadingPad(value);
     if (key === 'readingContentWidth') return clampOptionalContentWidth(value);
     if (key.endsWith('FontSize')) return clampOptionalFontSize(value);
@@ -123,17 +129,22 @@ function normalizeReadingStyleValue(key, value) {
     return value;
 }
 
-function getReadingStyleSnapshot() {
+function getReadingStyleSnapshot({ includeIndentScope = false } = {}) {
     const style = {};
     for (const key of READING_STYLE_KEYS) {
         style[key] = normalizeReadingStyleValue(key, settings[key]);
+    }
+    if (includeIndentScope) {
+        for (const key of INDENT_SCOPE_KEYS) {
+            style[key] = normalizeReadingStyleValue(key, settings[key]);
+        }
     }
     return style;
 }
 
 function applyReadingStyleSnapshot(style) {
     if (!style || typeof style !== 'object') return;
-    for (const key of READING_STYLE_KEYS) {
+    for (const key of [...READING_STYLE_KEYS, ...INDENT_SCOPE_KEYS]) {
         if (!Object.prototype.hasOwnProperty.call(style, key)) continue;
         settings[key] = normalizeReadingStyleValue(key, style[key]);
     }
@@ -223,7 +234,7 @@ function normalizeReadingStylePreset(raw) {
     const sourceStyle = raw.style && typeof raw.style === 'object' ? raw.style : raw;
     const style = {};
     let hasAny = false;
-    for (const key of READING_STYLE_KEYS) {
+    for (const key of [...READING_STYLE_KEYS, ...INDENT_SCOPE_KEYS]) {
         if (!Object.prototype.hasOwnProperty.call(sourceStyle, key)) continue;
         style[key] = normalizeReadingStyleValue(key, sourceStyle[key]);
         hasAny = true;
@@ -427,7 +438,8 @@ export function initDisplaySettingsTab() {
                                         <label class="nytw-preset-font-option" for="nytw_indent_scope_enabled"><input id="nytw_indent_scope_enabled" type="checkbox" /><span>首行缩进只作用于指定标签内</span></label>
                     <div id="nytw_indent_scope_box" class="nytw-style-grid nytw-style-grid--2" hidden>
                         <div class="nytw-typo-type"><i class="fa-solid fa-tag"></i> 格式标签</div>
-                        <input id="nytw_indent_scope_tags" type="text" class="text_pole nytw-input" placeholder="如 content，多个用逗号分隔" autocomplete="off" />
+                        <input id="nytw_indent_scope_tags" type="text" class="text_pole nytw-input" placeholder="如 content，多个用逗号分隔" autocomplete="off" list="nytw_indent_scope_tag_list" />
+                        <datalist id="nytw_indent_scope_tag_list"></datalist>
                         <div class="nytw-typo-type"><i class="fa-solid fa-filter"></i> 匹配方式</div>
                         <select id="nytw_indent_scope_mode" class="text_pole nytw-input">
                             <option value="include">只在这些标签内缩进</option>
@@ -687,6 +699,35 @@ export function initDisplaySettingsTab() {
     const indentScopeTagsEl = document.getElementById('nytw_indent_scope_tags');
     const indentScopeModeEl = document.getElementById('nytw_indent_scope_mode');
     const indentScopeBoxEl = document.getElementById('nytw_indent_scope_box');
+    const indentScopeTagListEl = document.getElementById('nytw_indent_scope_tag_list');
+
+    const parseScopeTags = (raw) => String(raw || '')
+        .split(/[,，\s]+/)
+        .map((item) => item.replace(/^<+|>+$/g, '').trim())
+        .filter((item) => /^[a-zA-Z][\w-]*$/.test(item));
+
+    const renderScopeTagList = () => {
+        if (!(indentScopeTagListEl instanceof HTMLElement)) return;
+        const history = Array.isArray(settings.indentScopeTagHistory) ? settings.indentScopeTagHistory : [];
+        indentScopeTagListEl.innerHTML = '';
+        for (const name of history) {
+            const opt = document.createElement('option');
+            opt.value = name;
+            indentScopeTagListEl.appendChild(opt);
+        }
+    };
+
+    const rememberScopeTags = (raw) => {
+        const names = parseScopeTags(raw);
+        if (!names.length) return;
+        const history = Array.isArray(settings.indentScopeTagHistory) ? settings.indentScopeTagHistory.slice() : [];
+        for (const name of names) {
+            if (!history.includes(name)) history.unshift(name);
+        }
+        settings.indentScopeTagHistory = history.slice(0, 30);
+        saveSettingsDebounced();
+        renderScopeTagList();
+    };
     const splitLinesEl = document.getElementById('nytw_split_lines_to_paragraphs');
     const overallFontWeightEl = document.getElementById('nytw_overall_font_weight');
     const overallFontStyleEl = document.getElementById('nytw_overall_font_style');
@@ -1238,6 +1279,7 @@ export function initDisplaySettingsTab() {
         if (indentScopeBoxEl instanceof HTMLElement) {
             indentScopeBoxEl.hidden = settings.indentScopeEnabled !== true;
         }
+        renderScopeTagList();
         const diagBtn = document.getElementById('nytw_para_diag');
     const diagBox = document.getElementById('nytw_para_diag_box');
     const diagOut = document.getElementById('nytw_para_diag_out');
@@ -1452,6 +1494,74 @@ export function initDisplaySettingsTab() {
             autoEl.checked = settings.readingThemeAutoApply === true;
             autoEl.disabled = !name;
         }
+    };
+
+    let undoBarEl = null;
+    let undoBarTimer = 0;
+
+    const hideResetUndoBar = () => {
+        if (undoBarTimer) {
+            clearTimeout(undoBarTimer);
+            undoBarTimer = 0;
+        }
+        if (undoBarEl && undoBarEl.parentNode) undoBarEl.parentNode.removeChild(undoBarEl);
+        undoBarEl = null;
+    };
+
+    /** 换美化自动重置后的撤销条，停留 12 秒 */
+    const showResetUndoBar = (snapshot) => {
+        hideResetUndoBar();
+        if (!document.body) return;
+
+        const bar = document.createElement('div');
+        bar.setAttribute('style', [
+            'position:fixed',
+            'left:12px',
+            'right:12px',
+            'bottom:16px',
+            'z-index:2147483002',
+            'display:flex',
+            'align-items:center',
+            'gap:10px',
+            'padding:10px 12px',
+            'border-radius:10px',
+            'background:rgba(20,20,24,0.94)',
+            'border:1px solid rgba(255,255,255,0.18)',
+            'box-shadow:0 8px 24px rgba(0,0,0,0.4)',
+            'color:#fff',
+            'font-size:12px',
+            'line-height:1.5',
+        ].join(';'));
+
+        const text = document.createElement('span');
+        text.style.flex = '1 1 auto';
+        text.textContent = '已按新美化重置阅读样式（12 秒内可撤销）';
+
+        const undoBtn = document.createElement('button');
+        undoBtn.type = 'button';
+        undoBtn.textContent = '撤销';
+        undoBtn.setAttribute('style', [
+            'flex:0 0 auto',
+            'padding:5px 12px',
+            'border-radius:7px',
+            'border:1px solid rgba(140,185,255,0.7)',
+            'background:rgba(90,140,235,0.35)',
+            'color:#dfe9ff',
+            'font-size:12px',
+        ].join(';'));
+
+        undoBtn.addEventListener('click', () => {
+            applyReadingStyleSnapshot(snapshot);
+            saveSettingsDebounced();
+            applyReadingStyleNow();
+            hideResetUndoBar();
+        });
+
+        bar.appendChild(text);
+        bar.appendChild(undoBtn);
+        document.body.appendChild(bar);
+        undoBarEl = bar;
+        undoBarTimer = setTimeout(hideResetUndoBar, 12000);
     };
 
     const applyThemeBindingForCurrentTheme = () => {
@@ -2106,6 +2216,11 @@ export function initDisplaySettingsTab() {
         scheduleScan({ full: true });
     });
 
+    indentScopeTagsEl?.addEventListener('change', () => {
+        if (!(indentScopeTagsEl instanceof HTMLInputElement)) return;
+        rememberScopeTags(indentScopeTagsEl.value);
+    });
+
     themeAutoEl?.addEventListener('change', () => {
         if (!(themeAutoEl instanceof HTMLInputElement)) return;
         settings.readingThemeAutoApply = themeAutoEl.checked;
@@ -2126,7 +2241,10 @@ export function initDisplaySettingsTab() {
             if (settings.readingThemeAutoApply === true) applyThemeBindingForCurrentTheme();
         } else {
             // 没绑定的美化：清掉上一套阅读样式，避免继承过来
+            // 清之前先留一份，给用户一个撤销的机会
+            const beforeReset = getReadingStyleSnapshot();
             resetReadingStyle();
+            showResetUndoBar(beforeReset);
         }
     }, true);
 
@@ -2199,7 +2317,7 @@ export function initDisplaySettingsTab() {
         const preset = {
             id: existing?.id || buildPresetId(), name,
             createdAt: existing?.createdAt || now, updatedAt: now,
-            style: getReadingStyleSnapshot(),
+            style: getReadingStyleSnapshot({ includeIndentScope: true }),
             ...(readingPresetFontsEl.checked ? { fonts: normalizePresetFonts(settings) } : {}),
         };
         upsertReadingStylePreset(preset);
@@ -2242,7 +2360,7 @@ export function initDisplaySettingsTab() {
             version: READING_STYLE_PRESET_VERSION,
             exportedAt: new Date().toISOString(),
             name,
-            style: cloneJsonValue(selected?.style || getReadingStyleSnapshot()),
+            style: cloneJsonValue(selected?.style || getReadingStyleSnapshot({ includeIndentScope: true })),
             ...((selected ? selected.fonts : (readingPresetFontsEl.checked ? normalizePresetFonts(settings) : null))
                 ? { fonts: cloneJsonValue(selected ? selected.fonts : normalizePresetFonts(settings)) } : {}),
         };
