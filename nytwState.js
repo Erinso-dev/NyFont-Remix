@@ -81,6 +81,8 @@ export const DEFAULT_SETTINGS = {
     indentScopeMode: 'include',
     indentScopeTagHistory: [],
     readingThemeBindings: {},
+    // 切换美化且该美化没有绑定时，自动套用的阅读样式预设
+    defaultReadingPresetId: '',
     // 缩进范围 → 酒馆预设 的绑定（只存开关/标签/匹配方式）
     indentPresetBindings: {},
     indentPresetAutoApply: false,
@@ -450,6 +452,11 @@ function applyDefaultSettings() {
     if (!Array.isArray(settings.importedFonts)) settings.importedFonts = [];
     if (!Array.isArray(settings.localeFonts)) settings.localeFonts = [];
     if (!Array.isArray(settings.readingStylePresets)) settings.readingStylePresets = [];
+    settings.defaultReadingPresetId = String(settings.defaultReadingPresetId || '');
+    if (settings.defaultReadingPresetId
+        && !settings.readingStylePresets.some((preset) => preset && preset.id === settings.defaultReadingPresetId)) {
+        settings.defaultReadingPresetId = '';
+    }
 
     if (settings.presetsVersion < 3) {
         for (const preset of PRESET_FONTS) {

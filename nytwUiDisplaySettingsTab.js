@@ -383,6 +383,14 @@ export function initDisplaySettingsTab() {
                         <input id="nytw_reading_preset_file" type="file" accept="application/json,.json" style="display:none" />
                         <hr style="opacity:.12;margin:8px 0" />
                         <div class="nytw-reader-preset-row">
+                            <label for="nytw_reading_preset_default">默认预设</label>
+                            <input id="nytw_reading_preset_default" class="text_pole nytw-reader-text-input" type="text" readonly placeholder="未设置" />
+                            <button id="nytw_reading_preset_set_default" class="menu_button nytw-reader-small-btn nytw-preset-btn" type="button">设为默认</button>
+                            <button id="nytw_reading_preset_clear_default" class="menu_button nytw-reader-small-btn nytw-preset-btn" type="button">清除</button>
+                        </div>
+                        <p class="nytw-preset-hint">切换美化时，如果该美化没有绑定样式，会自动套用这里的默认预设；连默认预设也没有，才会重置为「全部继承」。</p>
+                        <hr style="opacity:.12;margin:8px 0" />
+                        <div class="nytw-reader-preset-row">
                             <label for="nytw_theme_bind_name">当前美化</label>
                             <input id="nytw_theme_bind_name" class="text_pole nytw-reader-text-input" type="text" readonly placeholder="未识别到美化名称" />
                             <button id="nytw_theme_bind_save" class="menu_button nytw-reader-small-btn nytw-preset-btn" type="button">绑定</button>
@@ -1232,6 +1240,11 @@ export function initDisplaySettingsTab() {
         readingPresetApplyEl.disabled = !preset;
         readingPresetDeleteEl.disabled = !preset;
         readingPresetSaveEl.textContent = preset ? '保存修改' : '保存新预设';
+        if (readingPresetDefaultEl instanceof HTMLInputElement) {
+            const defId = String(settings.defaultReadingPresetId || '');
+            const def = settings.readingStylePresets.find((item) => item.id === defId);
+            readingPresetDefaultEl.value = def ? def.name : '';
+        }
         syncPresetFontHint();
     };
     const syncReadingPresetSelect = (selectedId = null) => {
@@ -2199,7 +2212,17 @@ export function initDisplaySettingsTab() {
         if (boundStyle) {
             if (settings.readingThemeAutoApply === true) applyThemeBindingForCurrentTheme();
         } else {
-            resetReadingStyle();
+            // 没有绑定：先看有没有设置「默认预设」
+            const defaultId = String(settings.defaultReadingPresetId || '');
+            const defaultPreset = defaultId
+                ? (settings.readingStylePresets || []).find((item) => item.id === defaultId)
+                : null;
+            if (defaultPreset?.style) {
+                applyReadingStyleSnapshot(defaultPreset.style);
+                applyReadingStyleNow();
+            } else {
+                resetReadingStyle();
+            }
         }
     }, true);
 
@@ -2288,6 +2311,22 @@ export function initDisplaySettingsTab() {
         updateScopeBindUi();
         applyScopeBindingForCurrentPreset();
     }, true);
+
+    document.getElementById('nytw_reading_preset_set_default')?.addEventListener('click', () => {
+        const id = String(readingPresetSelectEl.value || '');
+        if (!id) return;
+        const preset = (settings.readingStylePresets || []).find((item) => item.id === id);
+        if (!preset) return;
+        settings.defaultReadingPresetId = id;
+        saveSettingsDebounced();
+        syncPresetEditor();
+    });
+
+    document.getElementById('nytw_reading_preset_clear_default')?.addEventListener('click', () => {
+        settings.defaultReadingPresetId = '';
+        saveSettingsDebounced();
+        syncPresetEditor();
+    });
 
     document.getElementById('nytw_scope_bind_save')?.addEventListener('click', () => {
         const name = getCurrentStPresetName();
