@@ -384,11 +384,9 @@ export function initDisplaySettingsTab() {
                         <hr style="opacity:.12;margin:8px 0" />
                         <div class="nytw-reader-preset-row">
                             <label for="nytw_reading_preset_default">默认预设</label>
-                            <input id="nytw_reading_preset_default" class="text_pole nytw-reader-text-input" type="text" readonly placeholder="未设置" />
-                            <button id="nytw_reading_preset_set_default" class="menu_button nytw-reader-small-btn nytw-preset-btn" type="button">设为默认</button>
-                            <button id="nytw_reading_preset_clear_default" class="menu_button nytw-reader-small-btn nytw-preset-btn" type="button">清除</button>
+                            <select id="nytw_reading_preset_default" class="nytw-mini-select" aria-describedby="nytw_reading_preset_default_hint"></select>
                         </div>
-                        <p class="nytw-preset-hint">切换美化时，如果该美化没有绑定样式，会自动套用这里的默认预设；连默认预设也没有，才会重置为「全部继承」。</p>
+                        <p id="nytw_reading_preset_default_hint" class="nytw-preset-hint">切换美化时，如果该美化没有绑定样式，会自动套用这里的默认预设；选「不设置」则重置为「全部继承」。</p>
                         <hr style="opacity:.12;margin:8px 0" />
                         <div class="nytw-reader-preset-row">
                             <label for="nytw_theme_bind_name">当前美化</label>
@@ -678,6 +676,7 @@ export function initDisplaySettingsTab() {
     const readingPresetExportEl = document.getElementById('nytw_reading_preset_export');
     const readingPresetImportEl = document.getElementById('nytw_reading_preset_import');
     const readingPresetFileEl = document.getElementById('nytw_reading_preset_file');
+    const readingPresetDefaultEl = document.getElementById('nytw_reading_preset_default');
 
     const typoRowCustomEl = document.getElementById('nytw_typo_row_custom');
     const typoRowLocaleEl = document.getElementById('nytw_typo_row_locale');
@@ -1240,10 +1239,20 @@ export function initDisplaySettingsTab() {
         readingPresetApplyEl.disabled = !preset;
         readingPresetDeleteEl.disabled = !preset;
         readingPresetSaveEl.textContent = preset ? '保存修改' : '保存新预设';
-        if (readingPresetDefaultEl instanceof HTMLInputElement) {
-            const defId = String(settings.defaultReadingPresetId || '');
-            const def = settings.readingStylePresets.find((item) => item.id === defId);
-            readingPresetDefaultEl.value = def ? def.name : '';
+        if (readingPresetDefaultEl instanceof HTMLSelectElement) {
+            const current = String(settings.defaultReadingPresetId || '');
+            readingPresetDefaultEl.innerHTML = '';
+            const noneOpt = document.createElement('option');
+            noneOpt.value = '';
+            noneOpt.textContent = '（不设置）';
+            readingPresetDefaultEl.appendChild(noneOpt);
+            for (const item of settings.readingStylePresets) {
+                const opt = document.createElement('option');
+                opt.value = item.id;
+                opt.textContent = item.name;
+                readingPresetDefaultEl.appendChild(opt);
+            }
+            readingPresetDefaultEl.value = settings.readingStylePresets.some((item) => item.id === current) ? current : '';
         }
         syncPresetFontHint();
     };
@@ -2312,20 +2321,10 @@ export function initDisplaySettingsTab() {
         applyScopeBindingForCurrentPreset();
     }, true);
 
-    document.getElementById('nytw_reading_preset_set_default')?.addEventListener('click', () => {
-        const id = String(readingPresetSelectEl.value || '');
-        if (!id) return;
-        const preset = (settings.readingStylePresets || []).find((item) => item.id === id);
-        if (!preset) return;
-        settings.defaultReadingPresetId = id;
+    readingPresetDefaultEl?.addEventListener('change', () => {
+        if (!(readingPresetDefaultEl instanceof HTMLSelectElement)) return;
+        settings.defaultReadingPresetId = String(readingPresetDefaultEl.value || '');
         saveSettingsDebounced();
-        syncPresetEditor();
-    });
-
-    document.getElementById('nytw_reading_preset_clear_default')?.addEventListener('click', () => {
-        settings.defaultReadingPresetId = '';
-        saveSettingsDebounced();
-        syncPresetEditor();
     });
 
     document.getElementById('nytw_scope_bind_save')?.addEventListener('click', () => {
