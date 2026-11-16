@@ -103,6 +103,8 @@ function renderCustomFontRules(containerEl) {
 
     const save = debounce(() => {
         saveSettingsDebounced();
+        // 规则里的字体/符号变化后要重新解析并重建包裹片段，否则会一直沿用旧字体
+        queueApplyFonts();
         scheduleScan();
     }, 200);
 
@@ -149,6 +151,7 @@ function renderCustomFontRules(containerEl) {
             if (currentIndex < 0) return;
             settings.customFontRules.splice(currentIndex, 1);
             saveSettingsDebounced();
+            queueApplyFonts();
             renderCustomFontRules(containerEl);
             scheduleScan();
         });
@@ -358,6 +361,7 @@ export function initFontSettingsTab() {
                 }
             }
             saveSettingsDebounced();
+            queueApplyFonts();
             if (customRulesContainer) renderCustomFontRules(customRulesContainer);
             scheduleScan();
         });

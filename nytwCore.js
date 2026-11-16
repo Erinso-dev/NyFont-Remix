@@ -1077,6 +1077,12 @@ async function applyFontSettings() {
     styleEl.textContent = css;
     applyTypographyVariables();
     syncTextAnimationTargets();
+
+    // 包裹规则的字体是直接写在元素内联样式上的，CSS 更新不会自动生效；
+    // 字体/符号变化后需要重新扫描，让已有消息里的包裹片段按新字体重建。
+    if (settings.customFontWrapEnabled && activeCustomRules.length > 0) {
+        scheduleScan({ full: true });
+    }
 }
 
 function stripStreamingBufferWhitespace(rootEl) {

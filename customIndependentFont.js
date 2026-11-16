@@ -79,6 +79,8 @@ function getContainerSignature(containerEl, rules = []) {
         rules: rules.map((rule) => ({
             open: rule.open,
             close: rule.close,
+            // 内联字体写在包裹元素上，字体变化也必须算进签名，否则改字体后不会重建
+            fontCss: String(rule.fontCss || ''),
             openCount: countOccurrences(text, rule.open),
             closeCount: countOccurrences(text, rule.close),
         })),
