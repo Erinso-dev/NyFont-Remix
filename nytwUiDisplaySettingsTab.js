@@ -870,9 +870,16 @@ export function initDisplaySettingsTab() {
         setPlaceholder(localeLetterSpacingEl, locale.letterSpacingEm === null ? '' : formatNumber(locale.letterSpacingEm, 2), '继承');
     };
 
+    // 排版设置改动时，除了重建「阅读样式」（.mes_text / 对话 / 包裹），
+    // 还要重建字体样式里的 p/li/span「继承」规则，否则正文 p 层会一直沿用美化写死的字号/字距。
+    const applyTypographyAndFonts = () => {
+        applyTypographyVariables();
+        queueApplyFonts();
+    };
+
     const debouncedSaveAndApplyTypography = debounce(() => {
         saveSettingsDebounced();
-        applyTypographyVariables();
+        applyTypographyAndFonts();
         syncReadingStylePreview();
         syncTypographyPlaceholders();
         syncReadingColorControls();
@@ -894,7 +901,7 @@ export function initDisplaySettingsTab() {
             setValue(normalized);
             inputEl.value = normalized === null || normalized === undefined ? '' : String(normalized);
             saveSettingsDebounced();
-            applyTypographyVariables();
+            applyTypographyAndFonts();
             syncTypographyPlaceholders();
         });
     };
@@ -1006,7 +1013,7 @@ export function initDisplaySettingsTab() {
             setValue(normalized);
             inputEl.value = normalized;
             saveSettingsDebounced();
-            applyTypographyVariables();
+            applyTypographyAndFonts();
             syncReadingStylePreview();
             syncTypographyPlaceholders();
         });
@@ -1019,7 +1026,7 @@ export function initDisplaySettingsTab() {
             setValue(normalizeFn(selectEl.value));
             selectEl.value = String(getValue() || '');
             saveSettingsDebounced();
-            applyTypographyVariables();
+            applyTypographyAndFonts();
             syncReadingStylePreview();
         });
     };
@@ -1040,7 +1047,7 @@ export function initDisplaySettingsTab() {
                 setValue(normalized);
                 textEl.value = normalized;
                 saveSettingsDebounced();
-                applyTypographyVariables();
+                applyTypographyAndFonts();
                 syncReadingStylePreview();
                 syncReadingColorControls();
             });
@@ -1505,7 +1512,7 @@ export function initDisplaySettingsTab() {
 
     const applyReadingStyleNow = () => {
         saveSettingsDebounced();
-        applyTypographyVariables();
+        applyTypographyAndFonts();
         syncReadingStyleControls();
         syncTypographyPlaceholders();
     };
