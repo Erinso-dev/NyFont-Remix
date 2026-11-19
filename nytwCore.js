@@ -59,6 +59,22 @@ const STREAMING_MESSAGE_CLASS = 'nytw-streaming';
 // 「包裹字符字体」当前生效的规则（由 applyFontSettings 解析后写入）
 let activeCustomRules = [];
 
+// 很多美化主题会用 `html body #sheld #chat ... !important`（2 个 id）这类高权重规则
+// 把正文字体/字号锁死。这里给插件的字体规则追加两个不存在的 :not(#id)，
+// 把权重提到 3 个 id，稳定压过主题，让插件里设置的字体真正生效。
+const NYTW_FORCE_ID_SUFFIX = ':not(#nytw-font-force-a):not(#nytw-font-force-b)';
+
+/** 把 `#chat ...` 开头的选择器提权，其他选择器原样返回 */
+function forceChatSelector(selector) {
+    const raw = String(selector || '').trim();
+    if (!raw) return raw;
+    if (raw === '#chat') return `div#chat${NYTW_FORCE_ID_SUFFIX}`;
+    if (raw.startsWith('#chat ')) {
+        return `div#chat${NYTW_FORCE_ID_SUFFIX} ${raw.slice('#chat '.length)}`;
+    }
+    return raw;
+}
+
 // 首行缩进范围：不在范围内的块会带上这个属性，CSS 里把 text-indent 归零
 const INDENT_OFF_ATTR = 'data-nytw-indent-off';
 const INDENT_BLOCK_SELECTOR = 'p, li, blockquote, .nytw-para-line';
@@ -320,44 +336,30 @@ const UI_PATCH_CSS = [
     '.nytw-switch input{position:absolute !important;width:0 !important;height:0 !important;margin:0 !important;opacity:0 !important;pointer-events:none !important;}',
     '.nytw-switch-slider{flex:0 0 auto;}',
     '.nytw-content-area{scrollbar-gutter:stable;}',
-    /* 亮底时面板内部统一用自定的深色文字（不依赖任何主题变量，也不动标题栏） */
-    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container,',
-    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container :where(div,span,p,label,b,small,li,strong,em,i,a,button,pre,option){color:#232326 !important;}',
-    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container input,',
-    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container select,',
-    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container textarea{color:#232326 !important;-webkit-text-fill-color:#232326 !important;}',
-    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container input::placeholder,',
-    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container textarea::placeholder{color:rgba(35,35,38,0.45) !important;-webkit-text-fill-color:rgba(35,35,38,0.45) !important;opacity:1 !important;}',
-    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container .nytw-help,',
-    '#nytw_settings_root.nytw-fg-dark .nytw-settings-container .nytw-font-sub{color:rgba(35,35,38,0.55) !important;}',
-    /* 深色浮层在亮底上改白底，避免黑底黑字 */
-    '#nytw_settings_root.nytw-fg-dark .nytw-tag-panel,',
-    '#nytw_settings_root.nytw-fg-dark .nytw-diag-box,',
-    '#nytw_settings_root.nytw-fg-dark .nytw-batch-bar,',
-    '#nytw_settings_root.nytw-fg-dark .nytw-font-picker-popup{background:#ffffff !important;border-color:rgba(0,0,0,0.12) !important;}',
+    /* 面板文字颜色：跟随美化正文色（--SmartThemeBodyColor），不再写死深/浅两套，也不做亮度采样 */
+    '#nytw_settings_root#nytw_settings_root .nytw-settings-container,',
+    '#nytw_settings_root#nytw_settings_root .nytw-settings-container :where(div,span,p,label,b,small,li,strong,em,i,a,button,pre,option,summary){color:var(--SmartThemeBodyColor,inherit) !important;-webkit-text-fill-color:currentColor !important;}',
+    '#nytw_settings_root#nytw_settings_root .nytw-settings-container .nytw-label,',
+    '#nytw_settings_root#nytw_settings_root .nytw-settings-container .nytw-row--nested .nytw-label{color:var(--SmartThemeBodyColor,inherit) !important;-webkit-text-fill-color:currentColor !important;}',
+    '#nytw_settings_root#nytw_settings_root .nytw-settings-container input,',
+    '#nytw_settings_root#nytw_settings_root .nytw-settings-container select,',
+    '#nytw_settings_root#nytw_settings_root .nytw-settings-container textarea{color:var(--SmartThemeBodyColor,inherit) !important;-webkit-text-fill-color:currentColor !important;}',
+    '#nytw_settings_root#nytw_settings_root .nytw-settings-container input::placeholder,',
+    '#nytw_settings_root#nytw_settings_root .nytw-settings-container textarea::placeholder{color:var(--SmartThemeBodyColor,inherit) !important;-webkit-text-fill-color:currentColor !important;opacity:.45 !important;}',
+    '#nytw_settings_root#nytw_settings_root .nytw-settings-container .nytw-help,',
+    '#nytw_settings_root#nytw_settings_root .nytw-settings-container .nytw-help *,',
+    '#nytw_settings_root#nytw_settings_root .nytw-settings-container .nytw-font-sub{color:var(--SmartThemeBodyColor,inherit) !important;-webkit-text-fill-color:currentColor !important;opacity:.7 !important;}',
+    /* 挂在 body 上的浮层（字体选择弹层/标签面板/诊断框/批量条）也跟随美化底色与正文色 */
+    '.nytw-font-picker-popup,.nytw-tag-panel,.nytw-diag-box,.nytw-batch-bar{color:var(--SmartThemeBodyColor,inherit) !important;background:var(--SmartThemeBlurTintColor,#1e1e1e) !important;border-color:rgba(127,127,127,.28) !important;}',
+    '.nytw-font-picker-popup :where(div,span,label,button,option,li),.nytw-tag-panel :where(div,span,label,button,li),.nytw-diag-box :where(div,span,pre),.nytw-batch-bar :where(div,span,button){color:var(--SmartThemeBodyColor,inherit) !important;-webkit-text-fill-color:currentColor !important;}',
+    '.nytw-font-picker-popup input,.nytw-tag-panel input,.nytw-font-picker-popup select{color:var(--SmartThemeBodyColor,inherit) !important;-webkit-text-fill-color:currentColor !important;}',
+    '.nytw-font-picker-popup .nytw-tag-chip,.nytw-tag-panel .nytw-tag-chip{color:var(--SmartThemeBodyColor,inherit) !important;background:rgba(127,127,127,.14) !important;border-color:rgba(127,127,127,.3) !important;}',
+    '.nytw-font-picker-popup .nytw-tag-chip.is-active,.nytw-tag-panel .nytw-tag-chip.is-active{background:rgba(127,127,127,.32) !important;border-color:rgba(127,127,127,.55) !important;}',
 ].join('\n');
 
 
 
-/* ---------------- 面板配色自适应：根据实际底色选文字色 ---------------- */
-
-function getEffectiveBgLuminance(el) {
-    let node = el;
-    while (node && node instanceof HTMLElement) {
-        const bg = getComputedStyle(node).backgroundColor;
-        const match = String(bg).match(/rgba?\(([^)]+)\)/i);
-        if (match) {
-            const parts = match[1].split(',').map((n) => Number.parseFloat(n.trim()));
-            const alpha = parts.length > 3 ? parts[3] : 1;
-            if (Number.isFinite(alpha) && alpha > 0.6) {
-                const [r, g, b] = parts;
-                return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-            }
-        }
-        node = node.parentElement;
-    }
-    return 0.2;
-}
+/* ---------------- 面板尺寸对齐 ---------------- */
 
 export function syncFieldMetrics() {
     const root = document.getElementById('nytw_settings_root');
@@ -380,11 +382,8 @@ export function syncFieldMetrics() {
 }
 
 export function applyPanelSkin() {
-    const root = document.getElementById('nytw_settings_root');
-    if (!(root instanceof HTMLElement)) return;
-    const parent = root.parentElement instanceof HTMLElement ? root.parentElement : root;
-    // 底色亮 → 需要把文字转成深色（颜色写死，不依赖主题变量）
-    root.classList.toggle('nytw-fg-dark', getEffectiveBgLuminance(parent) > 0.55);
+    // 面板文字色已改为跟随美化正文色（--SmartThemeBodyColor），不需要再按底色采样来切深/浅字。
+    // 保留这个导出，兼容旧调用（不再做任何事）。
 }
 
 function ensureUiPatchStyle() {
@@ -473,7 +472,9 @@ function pushReadingDeclaration(declarations, values, keys, property, varNames) 
 
 function pushReadingRule(css, selectors, declarations) {
     if (!declarations.length) return;
-    css.push(`\n${selectors.join(',')}{`, ...declarations, '}');
+    // 美化主题常用高权重 !important 规则锁字号/行距，这里统一提权，让插件的阅读样式设置真正生效
+    const forcedSelectors = selectors.map((selector) => forceChatSelector(selector));
+    css.push(`\n${forcedSelectors.join(',')}{`, ...declarations, '}');
 }
 
 function buildReadingStyleCss() {
@@ -973,27 +974,57 @@ async function applyFontSettings() {
             '.font-family-reset select,.font-family-reset textarea',
             `{font-family:${globalFontCss} !important;}`,
         ].join('');
-        // Ensure chat message body also follows the global font when bodyFont is not set.
-        css += `\n#chat .mes_text{font-family:${globalFontCss} !important;}`;
     }
 
-    if (bodyFontCss) {
-        css += `\n#chat .mes_text{font-family:${bodyFontCss} !important;}`;
+    // 聊天正文：美化主题常用高权重 !important 规则锁字体，这里用提权选择器强制覆盖。
+    // 先让 .mes_text 上的字体生效，再让 p/li/span 继承它；包裹片段/多语言/对话字体在下面用更高权重重设。
+    const effectiveChatFontCss = bodyFontCss || globalFontCss;
+    if (effectiveChatFontCss) {
+        css += '\n/* Chat Font Override (theme-resistant) */\n';
+        css += `\n${forceChatSelector('#chat .mes_text')}{font-family:${effectiveChatFontCss} !important;}`;
+        // 字体族一律继承正文；字号/行距/字距/字重/字斜只在插件里有设置时才接管，
+        // 没设置就完全不生成，保持美化自己的默认值。
+        const inheritDeclarations = ['font-family:inherit !important;'];
+        const typographyValues = getNormalizedTypographyValues();
+        if (hasAnyReadingStyleValue(typographyValues, ['bodyFontSize', 'overallFontSize'])) {
+            inheritDeclarations.push('font-size:inherit !important;');
+        }
+        if (hasAnyReadingStyleValue(typographyValues, ['bodyLineHeight', 'overallLineHeight'])) {
+            inheritDeclarations.push('line-height:inherit !important;');
+        }
+        if (hasAnyReadingStyleValue(typographyValues, ['bodyLetterSpacing', 'overallLetterSpacing'])) {
+            inheritDeclarations.push('letter-spacing:inherit !important;');
+        }
+        if (hasAnyReadingStyleValue(typographyValues, ['bodyFontWeight', 'overallFontWeight'])) {
+            inheritDeclarations.push('font-weight:inherit !important;');
+        }
+        if (hasAnyReadingStyleValue(typographyValues, ['bodyFontStyle', 'overallFontStyle'])) {
+            inheritDeclarations.push('font-style:inherit !important;');
+        }
+        css += `\n${[
+            forceChatSelector('#chat .mes_text p'),
+            forceChatSelector('#chat .mes_text li'),
+            forceChatSelector('#chat .mes_text span:not(.name_text)'),
+            forceChatSelector('#chat .mes_text blockquote'),
+            forceChatSelector('#chat .mes_text strong'),
+            forceChatSelector('#chat .mes_text em'),
+        ].join(',')}{${inheritDeclarations.join('')}}`;
     }
 
     if (localeFontMap.size) {
         css += '\n/* Locale Font Overrides */\n';
         for (const [key, fontCss] of localeFontMap.entries()) {
-            css += `#chat .mes_text [${LOCALE_FONT_ATTR}=${cssQuote(key)}]{font-family:${fontCss};}\n`;
+            css += `\n${forceChatSelector(`#chat .mes_text [${LOCALE_FONT_ATTR}=${cssQuote(key)}]`)}{font-family:${fontCss} !important;}\n`;
         }
     }
 
     if (dialogueFontCss) {
         css += [
-            '\n#chat .mes_text .Ny-font-manager,',
-            '#chat .mes_text .custom-Ny-font-manager,',
-            '#chat .mes_text .ny-dialogue,',
-            '#chat .mes_text .custom-ny-dialogue',
+            '\n/* Dialogue Font Overrides */',
+            forceChatSelector('#chat .mes_text .Ny-font-manager') + ',',
+            forceChatSelector('#chat .mes_text .custom-Ny-font-manager') + ',',
+            forceChatSelector('#chat .mes_text .ny-dialogue') + ',',
+            forceChatSelector('#chat .mes_text .custom-ny-dialogue'),
             `{font-family:${dialogueFontCss} !important;}`,
         ].join('');
     }
@@ -1002,8 +1033,9 @@ async function applyFontSettings() {
         const customClass = CUSTOM_INDEPENDENT_FONT_CLASS;
         const customScopedClass = `custom-${CUSTOM_INDEPENDENT_FONT_CLASS}`;
         css += [
-            `\n#chat .mes_text .${customClass},`,
-            `#chat .mes_text .${customScopedClass}`,
+            '\n/* Custom Font Overrides */',
+            `${forceChatSelector(`#chat .mes_text .${customClass}`)},`,
+            `${forceChatSelector(`#chat .mes_text .${customScopedClass}`)}`,
             `{font-family:${customFontCss} !important;}`,
         ].join('');
     }
@@ -1011,8 +1043,11 @@ async function applyFontSettings() {
     css += buildReadingPreviewFontCss(globalFontCss, bodyFontCss, dialogueFontCss);
 
     css += '\n/* Scoped typography overrides for locale/custom font ranges */\n';
-    css += `\n#chat .mes_text [${LOCALE_FONT_ATTR}]{font-size:var(--nytw-locale-font-size) !important;letter-spacing:var(--nytw-locale-letter-spacing) !important;}`;
-    css += `\n#chat .mes_text .${CUSTOM_INDEPENDENT_FONT_CLASS},#chat .mes_text .custom-${CUSTOM_INDEPENDENT_FONT_CLASS}{font-size:var(--nytw-custom-font-size) !important;letter-spacing:var(--nytw-custom-letter-spacing) !important;}`;
+    css += `\n${forceChatSelector(`#chat .mes_text [${LOCALE_FONT_ATTR}]`)}{font-size:var(--nytw-locale-font-size) !important;letter-spacing:var(--nytw-locale-letter-spacing) !important;}`;
+    css += `\n${[
+        forceChatSelector(`#chat .mes_text .${CUSTOM_INDEPENDENT_FONT_CLASS}`),
+        forceChatSelector(`#chat .mes_text .custom-${CUSTOM_INDEPENDENT_FONT_CLASS}`),
+    ].join(',')}{font-size:var(--nytw-custom-font-size) !important;letter-spacing:var(--nytw-custom-letter-spacing) !important;}`;
 
     css += [
         '\n/* Streaming: disable NyTW animations to avoid flicker while SillyTavern re-renders .mes_text */',

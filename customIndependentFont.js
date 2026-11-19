@@ -165,7 +165,9 @@ function wrapTextNodeRange(textNode, startOffset, endOffset, fontCss = '') {
     wrapper.setAttribute(CUSTOM_INDEPENDENT_FONT_MARK_ATTR, WRAP_KIND_VALUE);
     // 每条规则可以用不同字体，直接写在元素上
     if (fontCss) {
-        wrapper.style.fontFamily = fontCss;
+        // 用内联 !important：美化主题常用 `span:not(.name_text){font-family:... !important}`
+        // 覆盖内联普通样式，只有内联 !important 才能压过样式表里的 !important。
+        wrapper.style.setProperty('font-family', fontCss, 'important');
         wrapper.dataset.nytwCustomFont = fontCss;
     }
     middle.parentNode.replaceChild(wrapper, middle);
