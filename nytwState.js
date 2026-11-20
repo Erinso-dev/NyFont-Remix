@@ -34,6 +34,7 @@ const PRESET_FONTS = [
 export const DEFAULT_SETTINGS = {
     fontsEnabled: true,
     globalFont: '',
+    globalFontScope: 'ui',
     bodyFont: '',
     dialogueFont: '',
     customFont: '',
@@ -217,6 +218,12 @@ export function clampOptionalFontSize(value) {
     return Math.round(clamped * 2) / 2; // 0.5px steps
 }
 
+export function normalizeGlobalFontScope(value) {
+    const raw = String(value || '').trim();
+    if (raw === 'body' || raw === 'ui' || raw === 'all') return raw;
+    return 'ui';
+}
+
 export function clampOptionalLetterSpacing(value) {
     const num = parseOptionalNumber(value);
     if (num === null) return null;
@@ -363,6 +370,7 @@ function applyDefaultSettings() {
     settings.textAnimDialogueIntensity = clampTextAnimIntensity(settings.textAnimDialogueIntensity);
     settings.textAnimDialoguePeriod = clampTextAnimPeriod(settings.textAnimDialoguePeriod);
     settings.readingStyleEnabled = settings.readingStyleEnabled === true;
+    settings.globalFontScope = normalizeGlobalFontScope(settings.globalFontScope);
     settings.overallFontSize = clampOptionalFontSize(settings.overallFontSize);
     settings.overallLetterSpacing = clampOptionalLetterSpacing(settings.overallLetterSpacing);
     settings.overallLineHeight = clampOptionalLineHeight(settings.overallLineHeight);

@@ -29,6 +29,7 @@ import {
     normalizeStreamCursorShape,
     normalizeTextAnimColor,
     normalizeTextAnimEffect,
+    normalizeGlobalFontScope,
     settings,
 } from './nytwState.js';
 import { LOCALE_KEY_PRIORITY, UNICODE_RANGES } from './nytwLocaleData.js';
@@ -119,8 +120,16 @@ export function applyIndentScope(containerEl) {
         } catch {
             hit = false;
         }
+        // 图片/媒体块、图片提示词块永远不缩进（不依赖用户填的排除标签）
+        let autoOff = false;
+        try {
+            autoOff = Boolean(el.querySelector(MEDIA_BLOCK_SELECTOR))
+                || IMAGE_PROMPT_RE.test(String(el.textContent || ''));
+        } catch {
+            autoOff = false;
+        }
         // 现在只有「排除」语义：命中的不缩进，其余照常缩进
-        if (hit) {
+        if (hit || autoOff) {
             el.setAttribute(INDENT_OFF_ATTR, '1');
         } else {
             el.removeAttribute(INDENT_OFF_ATTR);
@@ -209,7 +218,11 @@ function queueApplyFonts() {
 
 const PARA_LINE_CLASS = 'nytw-para-line';
 const PARA_BLOCK_TAGS = new Set(['P','DIV','SECTION','ARTICLE','LI','UL','OL','BLOCKQUOTE','DETAILS','SUMMARY','H1','H2','H3','H4','H5','H6','TABLE','PRE','FIGURE','HEADER','FOOTER','ASIDE']);
-const PARA_OPAQUE_SELECTOR = 'pre, code, table, iframe, ul, ol, textarea, .ny-tw-char';
+const PARA_OPAQUE_SELECTOR = 'pre, code, table, iframe, ul, ol, textarea, .ny-tw-char, img, picture, video, audio, canvas, svg';
+// 图片/媒体块：不吃首行缩进、不拆成段落行
+const MEDIA_BLOCK_SELECTOR = 'img, picture, video, audio, iframe, canvas, svg, figure, .mes_img';
+// 图片生成扩展的提示词块（扩展没渲染成图片时会以文本形式留在消息里）
+const IMAGE_PROMPT_RE = /<\s*image\b|image\s*#{2,}/i;
 const PARA_MARK_ATTR = 'data-nytw-paragraphs';
 const PARA_MARK_VERSION = '2';
 let paraRewriteTimer = 0;
@@ -244,6 +257,9 @@ function splitBlockByBreaks(block) {
             span.className = PARA_LINE_CLASS;
             first.parentNode.insertBefore(span, first);
             for (const node of group) span.appendChild(node);
+            if (span.querySelector(MEDIA_BLOCK_SELECTOR) || IMAGE_PROMPT_RE.test(span.textContent || '')) {
+                span.setAttribute(INDENT_OFF_ATTR, '1');
+            }
             created += 1;
         }
         group = [];
@@ -597,11 +613,30 @@ function buildReadingStyleCss() {
         pushReadingRule(css, [`#chat .mes_text [${INDENT_OFF_ATTR}]`], ['text-indent:0 !important;']);
     }
 
+    // 图片/媒体块不吃首行缩进：图片扩展常在渲染后才把 <img> 插进段落里，用 :has() 兜底
+    pushReadingRule(css, [
+        '#chat .mes_text :is(p, li, blockquote, .nytw-para-line, div, center, figure):has(img, picture, video, iframe, canvas, svg)',
+    ], ['text-indent:0 !important;']);
+    pushReadingRule(css, [
+        '#chat .mes_text img',
+        '#chat .mes_text picture',
+        '#chat .mes_text video',
+        '#chat .mes_text iframe',
+        '#chat .mes_text canvas',
+        '#chat .mes_text svg',
+    ], ['text-indent:0 !important;']);
+
     const dialogueDeclarations = [];
     pushReadingDeclaration(dialogueDeclarations, values, ['dialogueFontSize', 'bodyFontSize', 'overallFontSize'], 'font-size', ['--nytw-dialogue-font-size', '--nytw-body-font-size', '--nytw-overall-font-size']);
     pushReadingDeclaration(dialogueDeclarations, values, ['dialogueLetterSpacing', 'bodyLetterSpacing', 'overallLetterSpacing'], 'letter-spacing', ['--nytw-dialogue-letter-spacing', '--nytw-body-letter-spacing', '--nytw-overall-letter-spacing']);
     pushReadingDeclaration(dialogueDeclarations, values, ['dialogueLineHeight', 'bodyLineHeight', 'overallLineHeight'], 'line-height', ['--nytw-dialogue-line-height', '--nytw-body-line-height', '--nytw-overall-line-height']);
-    pushReadingDeclaration(dialogueDeclarations, values, ['dialogueTextColor', 'bodyTextColor', 'overallTextColor'], 'color', ['--nytw-dialogue-text-color', '--nytw-body-text-color', '--nytw-overall-text-color']);
+    // 对话颜色：显式设置优先；全都没设时落到美化的「引用文本」色（--SmartThemeQuoteColor），
+    // 和酒馆原生引用保持一致，避免被 .mes q / font[color] q 之类的高权重规则带偏。
+    if (hasAnyReadingStyleValue(values, ['dialogueTextColor', 'bodyTextColor', 'overallTextColor'])) {
+        pushReadingDeclaration(dialogueDeclarations, values, ['dialogueTextColor', 'bodyTextColor', 'overallTextColor'], 'color', ['--nytw-dialogue-text-color', '--nytw-body-text-color', '--nytw-overall-text-color']);
+    } else {
+        dialogueDeclarations.push('color:var(--SmartThemeQuoteColor,inherit) !important;');
+    }
     pushReadingDeclaration(dialogueDeclarations, values, ['dialogueTextIndent', 'bodyTextIndent', 'overallTextIndent'], 'text-indent', ['--nytw-dialogue-text-indent', '--nytw-body-text-indent', '--nytw-overall-text-indent']);
     pushReadingDeclaration(dialogueDeclarations, values, ['dialogueTextIndent', 'bodyTextIndent', 'overallTextIndent'], 'padding-left', ['--nytw-dialogue-text-indent', '--nytw-body-text-indent', '--nytw-overall-text-indent']);
     pushReadingDeclaration(dialogueDeclarations, values, ['dialogueFontWeight', 'bodyFontWeight', 'overallFontWeight'], 'font-weight', ['--nytw-dialogue-font-weight', '--nytw-body-font-weight', '--nytw-overall-font-weight']);
@@ -889,10 +924,106 @@ function buildReadingPreviewFontCss(globalFontCss, bodyFontCss, dialogueFontCss)
     return css;
 }
 
+/* ---------------- 全局字体应用范围（正文外字体跟随，同时保留美化装饰字体） ---------------- */
+
+const GLOBAL_FONT_ON_CLASS = 'nytw-global-font-on';
+const GLOBAL_FONT_MARK_ATTR = 'data-nytw-globalfont';
+const GLOBAL_FONT_SKIP_SELECTOR = '.mes_text, code, pre, kbd, samp, script, style, [class*="fa-"], [class^="fa"], .fa, .fas, .far, .fal, .fab, .fa-solid, .fa-regular, .fa-brands';
+const GLOBAL_FONT_TARGET_SELECTORS = [
+    '#chat', '#top-bar', '#top-settings-holder', '#left-nav-panel', '#right-nav-panel',
+    '#options', '#send_form', '#character_popup', '#world_popup', '#extensionsMenu',
+    '#extensions_settings', '#quick-reply-menu', '#completion_prompt_manager_list',
+    '#nytw_settings_root', '.drawer-content', '.popup',
+];
+let cachedThemeFontFamilies = new Set();
+let lastGlobalFontCss = '';
+let lastGlobalFontScope = 'ui';
+
+/** 取字体列表里的第一个字体名（用于比较） */
+function parseFirstFontFamilyName(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const first = raw.split(',')[0].trim();
+    return first.replace(/^['"]+|['"]+$/g, '').toLowerCase();
+}
+
+/** 临时关掉插件的主字体变量覆盖，读美化真正的主字体 */
+function captureThemeFontFamilies() {
+    const html = document.documentElement;
+    const hadClass = html.classList.contains(GLOBAL_FONT_ON_CLASS);
+    if (hadClass) html.classList.remove(GLOBAL_FONT_ON_CLASS);
+    try {
+        const names = new Set();
+        const read = (el) => {
+            if (!el) return;
+            const style = getComputedStyle(el);
+            for (const name of ['--font-main', '--mainFontFamily']) {
+                const family = parseFirstFontFamilyName(style.getPropertyValue(name));
+                if (family) names.add(family);
+            }
+        };
+        read(html);
+        read(document.body);
+        cachedThemeFontFamilies = names;
+    } finally {
+        if (hadClass) html.classList.add(GLOBAL_FONT_ON_CLASS);
+    }
+}
+
+function removeGlobalFontInlineOverrides() {
+    document.querySelectorAll(`[${GLOBAL_FONT_MARK_ATTR}]`).forEach((el) => {
+        if (!(el instanceof HTMLElement)) return;
+        el.style.removeProperty('font-family');
+        el.removeAttribute(GLOBAL_FONT_MARK_ATTR);
+    });
+}
+
+function clearGlobalFontOverrides() {
+    removeGlobalFontInlineOverrides();
+    document.documentElement.classList.remove(GLOBAL_FONT_ON_CLASS);
+}
+
+function syncGlobalFontOverrideElement(el, globalFontCss) {
+    if (!(el instanceof HTMLElement)) return;
+    if (el.closest(GLOBAL_FONT_SKIP_SELECTOR)) return;
+    if (el.hasAttribute(GLOBAL_FONT_MARK_ATTR)) {
+        el.style.setProperty('font-family', globalFontCss, 'important');
+        return;
+    }
+    if (!cachedThemeFontFamilies.size) return;
+    const current = parseFirstFontFamilyName(getComputedStyle(el).fontFamily);
+    if (!current || !cachedThemeFontFamilies.has(current)) return;
+    el.setAttribute(GLOBAL_FONT_MARK_ATTR, '1');
+    el.style.setProperty('font-family', globalFontCss, 'important');
+}
+
+/**
+ * 把「美化里写死为主字体」的元素改成插件全局字体。
+ * root 为空时扫描整个界面；传入容器时只扫该容器（消息渲染后的增量处理）。
+ */
+function syncGlobalFontOverrides(globalFontCss, root = null) {
+    if (!globalFontCss || !cachedThemeFontFamilies.size) return;
+    const scan = (rootEl) => {
+        if (!(rootEl instanceof HTMLElement)) return;
+        syncGlobalFontOverrideElement(rootEl, globalFontCss);
+        rootEl.querySelectorAll('*').forEach((el) => syncGlobalFontOverrideElement(el, globalFontCss));
+    };
+    if (root instanceof HTMLElement) {
+        scan(root);
+        return;
+    }
+    for (const selector of GLOBAL_FONT_TARGET_SELECTORS) {
+        document.querySelectorAll(selector).forEach(scan);
+    }
+}
+
 async function applyFontSettings() {
     const styleEl = ensureFontStyleElement();
+    // 每次应用前先关掉主字体变量覆盖，才能读到美化真正的主字体
+    captureThemeFontFamilies();
     if (!settings.fontsEnabled) {
         styleEl.textContent = '';
+        clearGlobalFontOverrides();
         revokeAllFontObjectUrls();
         syncExternalFontStylesheets([]);
         fontValidationNoticeSigByField.clear();
@@ -974,6 +1105,18 @@ async function applyFontSettings() {
             '.font-family-reset select,.font-family-reset textarea',
             `{font-family:${globalFontCss} !important;}`,
         ].join('');
+
+        const globalFontScope = normalizeGlobalFontScope(settings.globalFontScope);
+        if (globalFontScope === 'ui' || globalFontScope === 'all') {
+            // 主题/酒馆自己声明主字体的变量：换成插件的全局字体，
+            // 凡是用 var(--font-main) / var(--mainFontFamily) 的地方自动跟随；
+            // 写死装饰字体（别的字体名）的地方不受影响。
+            css += `\nhtml.${GLOBAL_FONT_ON_CLASS}{--font-main:${globalFontCss} !important;--mainFontFamily:${globalFontCss} !important;}`;
+            css += `\nhtml.${GLOBAL_FONT_ON_CLASS} body{--font-main:${globalFontCss} !important;--mainFontFamily:${globalFontCss} !important;}`;
+        }
+        if (globalFontScope === 'all') {
+            css += `\nhtml.${GLOBAL_FONT_ON_CLASS} body:not(#nytw-force-a):not(#nytw-force-b):not(#nytw-force-c) :where(*:not([class*="fa-"]):not([class^="fa"]):not(code):not(pre):not(kbd):not(samp)){font-family:${globalFontCss} !important;}`;
+        }
     }
 
     // 聊天正文：美化主题常用高权重 !important 规则锁字体，这里用提权选择器强制覆盖。
@@ -1112,6 +1255,20 @@ async function applyFontSettings() {
     styleEl.textContent = css;
     applyTypographyVariables();
     syncTextAnimationTargets();
+
+    // 全局字体范围：ui 模式用「变量覆盖 + 主字体检测」保留装饰字体；all 模式交给 CSS 通配
+    const appliedGlobalFontScope = normalizeGlobalFontScope(settings.globalFontScope);
+    lastGlobalFontCss = globalFontCss;
+    lastGlobalFontScope = appliedGlobalFontScope;
+    removeGlobalFontInlineOverrides();
+    if (globalFontCss && appliedGlobalFontScope !== 'body') {
+        document.documentElement.classList.add(GLOBAL_FONT_ON_CLASS);
+    } else {
+        document.documentElement.classList.remove(GLOBAL_FONT_ON_CLASS);
+    }
+    if (globalFontCss && appliedGlobalFontScope === 'ui') {
+        syncGlobalFontOverrides(globalFontCss);
+    }
 
     // 包裹规则的字体是直接写在元素内联样式上的，CSS 更新不会自动生效；
     // 字体/符号变化后需要重新扫描，让已有消息里的包裹片段按新字体重建。
@@ -2860,6 +3017,9 @@ function flushScan() {
         const containers = Array.from(pendingContainers);
         pendingContainers.clear();
         containers.forEach(processContainer);
+        if (lastGlobalFontCss && lastGlobalFontScope === 'ui') {
+            try { containers.forEach((el) => syncGlobalFontOverrides(lastGlobalFontCss, el)); } catch { /* no-op */ }
+        }
         if (!getActiveStreamingMessageId()) syncTextAnimationTargets();
     } finally {
         queueMicrotask(() => {
@@ -2924,6 +3084,19 @@ try {
 } catch { /* no-op */ }
 
 queueApplyFonts();
+
+// 美化/主题切换后主字体可能变化：重新应用并重扫，让「保留装饰字体」的判断跟着更新
+try {
+    const customCssEl = document.getElementById('customCSS');
+    if (customCssEl) {
+        let themeRepaintTimer = 0;
+        new MutationObserver(() => {
+            clearTimeout(themeRepaintTimer);
+            themeRepaintTimer = setTimeout(() => queueApplyFonts(), 300);
+        }).observe(customCssEl, { childList: true, characterData: true, subtree: true });
+    }
+    document.getElementById('themes')?.addEventListener?.('change', () => queueApplyFonts());
+} catch { /* no-op */ }
 
 export function applyParagraphRewriteNow() {
     try {

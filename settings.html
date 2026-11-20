@@ -67,6 +67,15 @@
                         </div>
 
                             <div class="flex-container alignItemsCenter nytw-row nytw-row--font-override">
+                                <label for="nytw_global_font_scope" class="nytw-label">应用范围</label>
+                                <select id="nytw_global_font_scope" class="nytw-mini-select" title="全局字体作用范围">
+                                    <option value="body">只作用正文</option>
+                                    <option value="ui">正文 + 界面（保留装饰字体）</option>
+                                    <option value="all">全部文字（覆盖装饰字体）</option>
+                                </select>
+                            </div>
+
+                            <div class="flex-container alignItemsCenter nytw-row nytw-row--font-override">
                             <label for="nytw_body_font" class="nytw-label">正文字体</label>
                             <div class="nytw-input-wrapper">
                                 <input id="nytw_body_font"

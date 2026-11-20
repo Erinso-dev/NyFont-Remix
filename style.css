@@ -3917,3 +3917,84 @@
     overflow: hidden !important;
     clip-path: inset(50%) !important;
 }
+
+/* --- 字体选择弹层：标签 + 搜索栏（吸顶） --- */
+.nytw-font-picker-popup .nytw-font-popup-header {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--SmartThemeBlurTintColor, #2a2a2a);
+    padding: 2px 0 6px;
+    border-radius: 8px 8px 0 0;
+}
+
+.nytw-font-popup-search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 0 8px;
+    height: 32px;
+    box-sizing: border-box;
+    border-radius: 6px;
+    background: rgba(127, 127, 127, 0.14);
+    border: 1px solid rgba(127, 127, 127, 0.22);
+}
+
+.nytw-font-popup-search-icon {
+    flex: 0 0 auto;
+    width: 14px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--SmartThemeBodyColor, inherit);
+    opacity: 0.55;
+}
+
+.nytw-font-popup-search-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    outline: none !important;
+    box-shadow: none !important;
+    font-size: 13px;
+    line-height: 32px;
+    color: var(--SmartThemeBodyColor, inherit) !important;
+    -webkit-text-fill-color: currentColor;
+}
+
+.nytw-font-popup-search-input::placeholder {
+    color: var(--SmartThemeBodyColor, inherit);
+    opacity: 0.45;
+}
+
+.nytw-font-popup-search-clear {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--SmartThemeBodyColor, inherit);
+    opacity: 0.55;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.nytw-font-popup-search-clear:hover {
+    opacity: 0.9;
+}
+
+.nytw-font-option--empty {
+    justify-content: center;
+    opacity: 0.55;
+    cursor: default;
+    pointer-events: none;
+}

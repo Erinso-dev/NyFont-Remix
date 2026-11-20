@@ -1,7 +1,7 @@
 import { saveSettingsDebounced } from '../../../../script.js';
 import { queueApplyFonts, scheduleScan } from './nytwCore.js';
 import { importer_scheduleScan } from './nytwChatFontImporter.js';
-import { settings } from './nytwState.js';
+import { normalizeGlobalFontScope, settings } from './nytwState.js';
 import { debounce } from './nytwUtils.js';
 import { getFontFamilyDisplayLabel, toCssFontFamilyValue, setupFontPicker, setupLocalePicker } from './nytwFonts.js';
 import { UNICODE_RANGES } from './nytwLocaleData.js';
@@ -310,6 +310,16 @@ export function initFontSettingsTab() {
         setupFontPicker(globalEl, globalPopup, (val) => {
             settings.globalFont = val;
             debouncedSaveAndApply();
+        });
+    }
+
+    const globalScopeEl = document.getElementById('nytw_global_font_scope');
+    if (globalScopeEl instanceof HTMLSelectElement) {
+        globalScopeEl.value = normalizeGlobalFontScope(settings.globalFontScope);
+        globalScopeEl.addEventListener('change', () => {
+            settings.globalFontScope = normalizeGlobalFontScope(globalScopeEl.value);
+            saveSettingsDebounced();
+            queueApplyFonts();
         });
     }
 

@@ -1045,21 +1045,19 @@ function getAvailableFontOptions() {
 function renderFontPopupList(popupEl, filterText, onSelect) {
     if (!popupEl) return;
     const options = getAvailableFontOptions();
-    const normalizedFilter = String(filterText || '').toLowerCase().trim();
     const activeTag = String(popupEl.dataset.activeTag || '');
-
-    let filtered = options;
-    if (activeTag) {
-        filtered = filtered.filter(o => Array.isArray(o.tags) && o.tags.includes(activeTag));
-    }
-    if (normalizedFilter) {
-        filtered = filtered.filter(o => String(o.value || '').toLowerCase().includes(normalizedFilter)
-            || String(o.family || '').toLowerCase().includes(normalizedFilter));
-    }
+    // 重新渲染（切标签/折叠分组）时保留搜索词
+    const keepSearch = popupEl.dataset.searchText !== undefined
+        ? String(popupEl.dataset.searchText || '')
+        : String(filterText || '');
 
     popupEl.innerHTML = '';
 
-    // 标签筛选条（只在存在标签时显示）
+    // 吸顶头：标签筛选 + 搜索栏
+    const headerEl = document.createElement('div');
+    headerEl.className = 'nytw-font-popup-header';
+    popupEl.appendChild(headerEl);
+
     const usedTagIds = new Set();
     for (const o of options) {
         for (const id of o.tags || []) usedTagIds.add(id);
@@ -1083,7 +1081,7 @@ function renderFontPopupList(popupEl, filterText, onSelect) {
             active: !activeTag,
             onClick: () => {
                 delete popupEl.dataset.activeTag;
-                renderFontPopupList(popupEl, '', onSelect);
+                renderFontPopupList(popupEl, keepSearch, onSelect);
             },
         })));
 
@@ -1098,110 +1096,168 @@ function renderFontPopupList(popupEl, filterText, onSelect) {
                     } else {
                         popupEl.dataset.activeTag = def.id;
                     }
-                    renderFontPopupList(popupEl, '', onSelect);
+                    renderFontPopupList(popupEl, keepSearch, onSelect);
                 },
             })));
         }
 
-        popupEl.appendChild(tagBar);
+        headerEl.appendChild(tagBar);
     }
 
-    if (filtered.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'nytw-font-option';
-        empty.style.opacity = '0.5';
-        empty.style.justifyContent = 'center';
-        empty.textContent = activeTag ? '该标签下没有字体' : '无匹配字体';
-        popupEl.appendChild(empty);
-        return;
-    }
+    // 搜索栏：打开弹层时不自动聚焦，点了它才弹键盘
+    const searchWrap = document.createElement('div');
+    searchWrap.className = 'nytw-font-popup-search';
+    const searchIcon = document.createElement('i');
+    searchIcon.className = 'fa-solid fa-magnifying-glass nytw-font-popup-search-icon';
+    searchIcon.setAttribute('aria-hidden', 'true');
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'nytw-font-popup-search-input';
+    searchInput.placeholder = '搜索字体…';
+    searchInput.value = keepSearch;
+    searchInput.setAttribute('autocomplete', 'off');
+    searchInput.setAttribute('enterkeyhint', 'search');
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'nytw-font-popup-search-clear';
+    clearBtn.title = '清除搜索';
+    clearBtn.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
+    clearBtn.style.display = keepSearch ? '' : 'none';
+    // 点搜索栏正常聚焦（这里不拦默认行为），其它地方保持不聚焦
+    searchInput.addEventListener('mousedown', (e) => e.stopPropagation());
+    searchWrap.appendChild(searchIcon);
+    searchWrap.appendChild(searchInput);
+    searchWrap.appendChild(clearBtn);
+    headerEl.appendChild(searchWrap);
 
-    let lastGroup = null;
+    const listEl = document.createElement('div');
+    listEl.className = 'nytw-font-popup-list';
+    popupEl.appendChild(listEl);
 
-    filtered.forEach(opt => {
-        if (opt.group !== lastGroup) {
-            const group = opt.group;
-            const isCollapsed = collapsedFontGroups.has(group);
-            const groupCount = filtered.filter((o) => o.group === group).length;
+    const renderList = (searchText) => {
+        const normalizedFilter = String(searchText || '').toLowerCase().trim();
+        let filtered = options;
+        if (activeTag) {
+            filtered = filtered.filter((o) => Array.isArray(o.tags) && o.tags.includes(activeTag));
+        }
+        if (normalizedFilter) {
+            filtered = filtered.filter((o) => String(o.value || '').toLowerCase().includes(normalizedFilter)
+                || String(o.family || '').toLowerCase().includes(normalizedFilter));
+        }
 
-            const groupHeader = document.createElement('div');
-            groupHeader.className = 'nytw-font-group-header is-collapsible';
-            if (isCollapsed) groupHeader.classList.add('is-collapsed');
+        listEl.innerHTML = '';
 
-            const arrow = document.createElement('span');
-            arrow.className = 'nytw-group-arrow';
-            arrow.textContent = isCollapsed ? '▸' : '▾';
+        if (filtered.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'nytw-font-option nytw-font-option--empty';
+            empty.textContent = normalizedFilter ? '无匹配字体' : (activeTag ? '该标签下没有字体' : '无匹配字体');
+            listEl.appendChild(empty);
+            return;
+        }
 
-            const labelSpan = document.createElement('span');
-            labelSpan.className = 'nytw-group-label';
-            labelSpan.textContent = FONT_GROUP_LABELS[group] || group;
+        let lastGroup = null;
 
-            const countSpan = document.createElement('span');
-            countSpan.className = 'nytw-group-count';
-            countSpan.textContent = String(groupCount);
+        filtered.forEach(opt => {
+            if (opt.group !== lastGroup) {
+                const group = opt.group;
+                const isCollapsed = collapsedFontGroups.has(group);
+                const groupCount = filtered.filter((o) => o.group === group).length;
 
-            groupHeader.appendChild(arrow);
-            groupHeader.appendChild(labelSpan);
-            groupHeader.appendChild(countSpan);
+                const groupHeader = document.createElement('div');
+                groupHeader.className = 'nytw-font-group-header is-collapsible';
+                if (isCollapsed) groupHeader.classList.add('is-collapsed');
 
-            groupHeader.addEventListener('mousedown', (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (collapsedFontGroups.has(group)) collapsedFontGroups.delete(group);
-                else collapsedFontGroups.add(group);
-                renderFontPopupList(popupEl, filterText, onSelect);
+                const arrow = document.createElement('span');
+                arrow.className = 'nytw-group-arrow';
+                arrow.textContent = isCollapsed ? '▸' : '▾';
+
+                const labelSpan = document.createElement('span');
+                labelSpan.className = 'nytw-group-label';
+                labelSpan.textContent = FONT_GROUP_LABELS[group] || group;
+
+                const countSpan = document.createElement('span');
+                countSpan.className = 'nytw-group-count';
+                countSpan.textContent = String(groupCount);
+
+                groupHeader.appendChild(arrow);
+                groupHeader.appendChild(labelSpan);
+                groupHeader.appendChild(countSpan);
+
+                groupHeader.addEventListener('mousedown', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (collapsedFontGroups.has(group)) collapsedFontGroups.delete(group);
+                    else collapsedFontGroups.add(group);
+                    renderList(searchInput.value);
+                });
+
+                listEl.appendChild(groupHeader);
+                lastGroup = group;
+            }
+
+            if (collapsedFontGroups.has(opt.group)) return;
+
+            const row = document.createElement('div');
+            row.className = 'nytw-font-option';
+            row.tabIndex = 0;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = opt.value;
+            try {
+                nameSpan.style.fontFamily = toCssFontFamilyValue(opt.family);
+            } catch { /* ignore */ }
+
+            row.appendChild(nameSpan);
+
+            if (opt.meta) {
+                const metaSpan = document.createElement('span');
+                metaSpan.className = 'nytw-font-option-sub';
+                metaSpan.textContent = opt.meta;
+                row.appendChild(metaSpan);
+            }
+
+            for (const tagId of (opt.tags || []).slice(0, 3)) {
+                const def = getTagDef(tagId);
+                if (!def) continue;
+                const tagSpan = document.createElement('span');
+                tagSpan.className = 'nytw-font-option-tag';
+                tagSpan.style.color = def.color;
+                tagSpan.style.borderColor = def.color;
+                tagSpan.textContent = def.name;
+                row.appendChild(tagSpan);
+            }
+
+            const handleSelect = (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onSelect(opt.value);
+            };
+
+            row.addEventListener('mousedown', handleSelect);
+            row.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleSelect(e);
             });
 
-            popupEl.appendChild(groupHeader);
-            lastGroup = group;
-        }
-
-        if (collapsedFontGroups.has(opt.group)) return;
-
-        const row = document.createElement('div');
-        row.className = 'nytw-font-option';
-        row.tabIndex = 0; // Make focusable
-
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = opt.value;
-        try {
-            // Preview font if possible (might not be loaded yet)
-            nameSpan.style.fontFamily = toCssFontFamilyValue(opt.family);
-        } catch { /* ignore */ }
-
-        row.appendChild(nameSpan);
-
-        if (opt.meta) {
-            const metaSpan = document.createElement('span');
-            metaSpan.className = 'nytw-font-option-sub';
-            metaSpan.textContent = opt.meta;
-            row.appendChild(metaSpan);
-        }
-
-        for (const tagId of (opt.tags || []).slice(0, 3)) {
-            const def = getTagDef(tagId);
-            if (!def) continue;
-            const tagSpan = document.createElement('span');
-            tagSpan.className = 'nytw-font-option-tag';
-            tagSpan.style.color = def.color;
-            tagSpan.style.borderColor = def.color;
-            tagSpan.textContent = def.name;
-            row.appendChild(tagSpan);
-        }
-
-        const handleSelect = (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            onSelect(opt.value);
-        };
-
-        row.addEventListener('mousedown', handleSelect); // mousedown fires before blur
-        row.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') handleSelect(e);
+            listEl.appendChild(row);
         });
+    };
 
-        popupEl.appendChild(row);
+    searchInput.addEventListener('input', () => {
+        popupEl.dataset.searchText = searchInput.value;
+        clearBtn.style.display = searchInput.value ? '' : 'none';
+        renderList(searchInput.value);
     });
+    clearBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        searchInput.value = '';
+        popupEl.dataset.searchText = '';
+        clearBtn.style.display = 'none';
+        renderList('');
+        try { searchInput.focus(); } catch { /* ignore */ }
+    });
+
+    renderList(keepSearch);
 }
 
 function setupPicker(inputEl, popupEl, renderContent, onSave) {
@@ -1210,6 +1266,7 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
     const hidePopup = () => {
         popupEl.classList.remove('is-open');
         delete popupEl.dataset.activeTag;
+        delete popupEl.dataset.searchText;
     };
 
     const positionPopup = () => {
@@ -1231,14 +1288,16 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
             popupEl.style.maxWidth = 'none';
             popupEl.style.left = left + 'px';
             // 先放到输入框下方，渲染完再按实际高度决定是否翻到上方
-            popupEl.style.maxHeight = Math.round(window.innerHeight * 0.5) + 'px';
+            // 用 visualViewport 高度，键盘弹起后仍能把搜索栏留在可视区内
+            const viewportHeight = Math.round(window.visualViewport?.height || window.innerHeight);
+            popupEl.style.maxHeight = Math.round(viewportHeight * 0.5) + 'px';
             popupEl.style.top = (rect.bottom + 6) + 'px';
 
-            const height = Math.min(popupEl.offsetHeight || 240, Math.round(window.innerHeight * 0.5));
+            const height = Math.min(popupEl.offsetHeight || 240, Math.round(viewportHeight * 0.5));
             let top = rect.bottom + 6;
-            if (top + height > window.innerHeight - margin) {
+            if (top + height > viewportHeight - margin) {
                 const up = rect.top - height - 6;
-                top = up > margin ? up : Math.max(margin, window.innerHeight - height - margin);
+                top = up > margin ? up : Math.max(margin, viewportHeight - height - margin);
             }
             popupEl.style.top = top + 'px';
         } catch (error) {
@@ -1257,8 +1316,18 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
         positionPopup();
     };
 
-    inputEl.addEventListener('focus', showPopup);
-    inputEl.addEventListener('click', showPopup);
+    // 打开弹层时不要把焦点给输入框（否则安卓会立刻弹键盘）；
+    // 只有点弹层里的搜索栏才出现键盘。
+    inputEl.addEventListener('pointerdown', (event) => {
+        if (event.button !== undefined && event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        showPopup();
+    });
+    inputEl.addEventListener('focus', () => {
+        showPopup();
+        try { inputEl.blur(); } catch { /* ignore */ }
+    });
 
     // If input is editable, filter on type
     if (!inputEl.readOnly) {
@@ -1282,6 +1351,13 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
         hidePopup();
     };
     document.addEventListener('pointerdown', onDocPointerDown, true);
+
+    const onViewportResize = () => {
+        if (popupEl.classList.contains('is-open')) positionPopup();
+    };
+    try {
+        window.visualViewport?.addEventListener('resize', onViewportResize);
+    } catch { /* ignore */ }
 }
 
 function setupFontPicker(inputEl, popupEl, onSave) {
