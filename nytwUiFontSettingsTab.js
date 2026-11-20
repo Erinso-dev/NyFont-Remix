@@ -1,8 +1,7 @@
-import { saveSettingsDebounced } from '../../../../script.js';
 import { queueApplyFonts, scheduleScan } from './nytwCore.js';
 import { importer_scheduleScan } from './nytwChatFontImporter.js';
 import { normalizeGlobalFontScope, settings } from './nytwState.js';
-import { debounce } from './nytwUtils.js';
+import { debounce, scheduleNyFontSave } from './nytwUtils.js';
 import { getFontFamilyDisplayLabel, toCssFontFamilyValue, setupFontPicker, setupLocalePicker } from './nytwFonts.js';
 import { UNICODE_RANGES } from './nytwLocaleData.js';
 
@@ -102,7 +101,7 @@ function renderCustomFontRules(containerEl) {
     }
 
     const save = debounce(() => {
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         // 规则里的字体/符号变化后要重新解析并重建包裹片段，否则会一直沿用旧字体
         queueApplyFonts();
         scheduleScan();
@@ -150,7 +149,7 @@ function renderCustomFontRules(containerEl) {
             const currentIndex = settings.customFontRules.indexOf(rule);
             if (currentIndex < 0) return;
             settings.customFontRules.splice(currentIndex, 1);
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             queueApplyFonts();
             renderCustomFontRules(containerEl);
             scheduleScan();
@@ -273,7 +272,7 @@ export function initFontSettingsTab() {
             settings.fontsEnabled = enabledEl.checked;
             setMainPanelOpen(enabledEl.checked);
             setDisplayTabVisible(enabledEl.checked);
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             queueApplyFonts();
             scheduleScan();
         };
@@ -293,13 +292,13 @@ export function initFontSettingsTab() {
     }
 
     const debouncedSaveAndApply = debounce(() => {
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         queueApplyFonts();
         scheduleScan();
     }, 200);
 
     const debouncedSaveAndScan = debounce(() => {
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         scheduleScan();
     }, 200);
 
@@ -318,7 +317,7 @@ export function initFontSettingsTab() {
         globalScopeEl.value = normalizeGlobalFontScope(settings.globalFontScope);
         globalScopeEl.addEventListener('change', () => {
             settings.globalFontScope = normalizeGlobalFontScope(globalScopeEl.value);
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             queueApplyFonts();
         });
     }
@@ -370,7 +369,7 @@ export function initFontSettingsTab() {
                     wrapToggle.dispatchEvent(new Event('change'));
                 }
             }
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             queueApplyFonts();
             if (customRulesContainer) renderCustomFontRules(customRulesContainer);
             scheduleScan();
@@ -413,7 +412,7 @@ export function initFontSettingsTab() {
 
         const updateWrapState = () => {
             settings.customFontWrapEnabled = customFontWrapEnabledEl.checked;
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             setCustomFontWrapPanelOpen(customFontWrapEnabledEl.checked);
             scheduleScan();
         };
@@ -453,7 +452,7 @@ export function initFontSettingsTab() {
 
         const updateLocaleState = () => {
             settings.localeFontEnabled = localeFontEnabledEl.checked;
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             setLocaleFontPanelOpen(localeFontEnabledEl.checked);
             queueApplyFonts();
             scheduleScan();
@@ -472,7 +471,7 @@ export function initFontSettingsTab() {
     }
 
     const updateLocaleList = debounce(() => {
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         queueApplyFonts();
         scheduleScan();
     }, 500);
@@ -542,7 +541,7 @@ export function initFontSettingsTab() {
         const updateImportState = () => {
             settings.chatFontImportEnabled = chatFontImportEnabledEl.checked;
             updateUiState();
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             if (settings.chatFontImportEnabled) {
                 importer_scheduleScan('ENABLE_TOGGLE');
             }
@@ -572,7 +571,7 @@ export function initFontSettingsTab() {
             globalEl.value = '';
             globalEl.style.fontFamily = '';
         }
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         queueApplyFonts();
     });
 
@@ -583,7 +582,7 @@ export function initFontSettingsTab() {
             bodyEl.value = '';
             bodyEl.style.fontFamily = '';
         }
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         queueApplyFonts();
     });
 
@@ -594,7 +593,7 @@ export function initFontSettingsTab() {
             dialogueEl.value = '';
             dialogueEl.style.fontFamily = '';
         }
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         queueApplyFonts();
     });
 
@@ -605,7 +604,7 @@ export function initFontSettingsTab() {
             customFontEl.value = '';
             customFontEl.style.fontFamily = '';
         }
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         queueApplyFonts();
         scheduleScan();
     });
@@ -616,7 +615,7 @@ export function initFontSettingsTab() {
         settings.customFontClose = '';
         if (customOpenEl instanceof HTMLInputElement) customOpenEl.value = '';
         if (customCloseEl instanceof HTMLInputElement) customCloseEl.value = '';
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         scheduleScan();
     });
 }

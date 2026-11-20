@@ -70,8 +70,8 @@
                                 <label for="nytw_global_font_scope" class="nytw-label">应用范围</label>
                                 <select id="nytw_global_font_scope" class="nytw-mini-select" title="全局字体作用范围">
                                     <option value="body">只作用正文</option>
-                                    <option value="ui">正文 + 界面（保留装饰字体）</option>
-                                    <option value="all">全部文字（覆盖装饰字体）</option>
+                                    <option value="ui">正文 + 界面（推荐）</option>
+                                    <option value="all">全部文字</option>
                                 </select>
                             </div>
 
@@ -765,7 +765,9 @@
                     <div class="nytw-collapsible" aria-hidden="true">
                         <div class="nytw-help">
                             <strong>全局字体：</strong><br/>
-                            影响 SillyTavern 整体界面字体，优先级低于聊天正文、对话和自定义包裹字体。<br/><br/>
+                            影响 SillyTavern 整体界面字体，优先级低于聊天正文、对话和自定义包裹字体。<br/>
+                            「正文 + 界面」会接管顶栏、设置抽屉、扩展程序面板、弹窗等界面文字；<br/>
+                            「全部文字」会接管正文以外的所有文字，但聊天正文/对话/包裹字体仍然优先。<br/><br/>
                             <strong>正文字体：</strong><br/>
                             设置聊天消息的全局默认字体。留空则使用主题默认字体。<br/><br/>
                             <strong>对话字体：</strong><br/>

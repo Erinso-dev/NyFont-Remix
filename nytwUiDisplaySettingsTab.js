@@ -1,9 +1,8 @@
-import { saveSettingsDebounced } from '../../../../script.js';
 import { applyParagraphRewriteNow, applyTypographyVariables, queueApplyFonts, scheduleScan } from './nytwCore.js';
 import { syncFontSettingsControls } from './nytwUiFontSettingsTab.js';
 import { createFontId, normalizeExternalStylesheetUrl, parseFontFamilyList } from './nytwFonts.js';
 import { renderImportedFontsList } from './nytwUiImportTab.js';
-import { debounce, notify } from './nytwUtils.js';
+import { debounce, notify, scheduleNyFontSave } from './nytwUtils.js';
 import {
     clampOptionalFontSize,
     clampOptionalLetterSpacing,
@@ -744,7 +743,7 @@ export function initDisplaySettingsTab() {
             if (!history.includes(name)) history.unshift(name);
         }
         settings.indentScopeTagHistory = history.slice(0, 30);
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         renderScopeTagList();
     };
     const splitLinesEl = document.getElementById('nytw_split_lines_to_paragraphs');
@@ -878,7 +877,7 @@ export function initDisplaySettingsTab() {
     };
 
     const debouncedSaveAndApplyTypography = debounce(() => {
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         applyTypographyAndFonts();
         syncReadingStylePreview();
         syncTypographyPlaceholders();
@@ -900,7 +899,7 @@ export function initDisplaySettingsTab() {
             const normalized = clampFn(inputEl.value);
             setValue(normalized);
             inputEl.value = normalized === null || normalized === undefined ? '' : String(normalized);
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             applyTypographyAndFonts();
             syncTypographyPlaceholders();
         });
@@ -1012,7 +1011,7 @@ export function initDisplaySettingsTab() {
             const normalized = normalizeFn(inputEl.value);
             setValue(normalized);
             inputEl.value = normalized;
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             applyTypographyAndFonts();
             syncReadingStylePreview();
             syncTypographyPlaceholders();
@@ -1025,7 +1024,7 @@ export function initDisplaySettingsTab() {
         selectEl.addEventListener('change', () => {
             setValue(normalizeFn(selectEl.value));
             selectEl.value = String(getValue() || '');
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             applyTypographyAndFonts();
             syncReadingStylePreview();
         });
@@ -1046,7 +1045,7 @@ export function initDisplaySettingsTab() {
                 const normalized = normalizeOptionalCssColor(textEl.value);
                 setValue(normalized);
                 textEl.value = normalized;
-                saveSettingsDebounced();
+                scheduleNyFontSave();
                 applyTypographyAndFonts();
                 syncReadingStylePreview();
                 syncReadingColorControls();
@@ -1511,7 +1510,7 @@ export function initDisplaySettingsTab() {
     };
 
     const applyReadingStyleNow = () => {
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         applyTypographyAndFonts();
         syncReadingStyleControls();
         syncTypographyPlaceholders();
@@ -1747,12 +1746,12 @@ export function initDisplaySettingsTab() {
             debouncedSaveAndApplyTextAnim();
             return;
         }
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         scheduleScan({ full: true });
     };
 
     const debouncedSaveAndApplyTextAnim = debounce(() => {
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         scheduleScan({ full: true });
     }, 180);
 
@@ -1909,7 +1908,7 @@ export function initDisplaySettingsTab() {
         settings.streamRenderMode = normalizeStreamRenderMode(mode);
         syncRenderModeUi(settings.streamRenderMode);
         syncStreamAnimUi();
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         queueApplyFonts();
         scheduleScan({ full: true });
     };
@@ -1955,7 +1954,7 @@ export function initDisplaySettingsTab() {
             
             settings.streamAnimEffect = effects[index];
             syncStreamAnimUi();
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             scheduleScan({ full: false });
         };
 
@@ -1970,7 +1969,7 @@ export function initDisplaySettingsTab() {
         streamAnimEffectEl.addEventListener('change', () => {
             settings.streamAnimEffect = normalizeStreamAnimEffect(streamAnimEffectEl.value);
             syncStreamAnimUi();
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             scheduleScan({ full: false });
         });
     }
@@ -1991,7 +1990,7 @@ export function initDisplaySettingsTab() {
                     }
                 }
                 syncStreamAnimUi();
-                saveSettingsDebounced();
+                scheduleNyFontSave();
                 scheduleScan({ full: false });
             });
         });
@@ -2002,7 +2001,7 @@ export function initDisplaySettingsTab() {
             const speed = clampStreamAnimSpeed(streamAnimSpeedEl.value);
             settings.streamAnimSpeed = speed;
             syncStreamAnimUi();
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             scheduleScan({ full: false });
         };
 
@@ -2014,7 +2013,7 @@ export function initDisplaySettingsTab() {
         streamAnimCursorEl.addEventListener('change', () => {
             settings.streamAnimCursor = streamAnimCursorEl.checked;
             syncStreamAnimUi();
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             scheduleScan({ full: false });
         });
     }
@@ -2023,7 +2022,7 @@ export function initDisplaySettingsTab() {
         streamAnimCursorShapeEl.addEventListener('change', () => {
             settings.streamAnimCursorShape = normalizeStreamCursorShape(streamAnimCursorShapeEl.value);
             syncStreamAnimUi();
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             scheduleScan({ full: false });
         });
     }
@@ -2032,7 +2031,7 @@ export function initDisplaySettingsTab() {
         streamAnimCursorAnimEl.addEventListener('change', () => {
             settings.streamAnimCursorAnim = normalizeStreamCursorAnim(streamAnimCursorAnimEl.value);
             syncStreamAnimUi();
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             scheduleScan({ full: false });
         });
     }
@@ -2041,7 +2040,7 @@ export function initDisplaySettingsTab() {
         const updateCursorImageUrl = () => {
             settings.streamAnimCursorImageUrl = normalizeStreamCursorImageUrl(streamAnimCursorImageUrlEl.value);
             syncStreamAnimUi();
-            saveSettingsDebounced();
+            scheduleNyFontSave();
             scheduleScan({ full: false });
         };
         streamAnimCursorImageUrlEl.addEventListener('input', updateCursorImageUrl);
@@ -2160,7 +2159,7 @@ export function initDisplaySettingsTab() {
             return;
         }
         getThemeBindings()[name] = getReadingStyleSnapshot();
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         updateThemeBindUi();
         notify('success', `已把当前阅读样式绑定到美化「${name}」。`);
     });
@@ -2182,7 +2181,7 @@ export function initDisplaySettingsTab() {
         const bindings = getThemeBindings();
         if (!bindings[name]) return;
         delete bindings[name];
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         updateThemeBindUi();
     });
 
@@ -2194,7 +2193,7 @@ export function initDisplaySettingsTab() {
         if (indentScopeBoxEl instanceof HTMLElement) {
             indentScopeBoxEl.hidden = !indentScopeEnabledEl.checked;
         }
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         applyReadingStyleNow();
         scheduleScan({ full: true });
     });
@@ -2202,7 +2201,7 @@ export function initDisplaySettingsTab() {
     indentScopeTagsEl?.addEventListener('input', () => {
         if (!(indentScopeTagsEl instanceof HTMLInputElement)) return;
         settings.indentScopeTags = indentScopeTagsEl.value;
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         scheduleScan({ full: true });
     });
 
@@ -2214,7 +2213,7 @@ export function initDisplaySettingsTab() {
     themeAutoEl?.addEventListener('change', () => {
         if (!(themeAutoEl instanceof HTMLInputElement)) return;
         settings.readingThemeAutoApply = themeAutoEl.checked;
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         if (themeAutoEl.checked) applyThemeBindingForCurrentTheme();
         updateThemeBindUi();
     });
@@ -2280,7 +2279,7 @@ export function initDisplaySettingsTab() {
         settings.indentScopeEnabled = snapshot.indentScopeEnabled === true;
         settings.indentScopeTags = String(snapshot.indentScopeTags || '');
         settings.indentScopeMode = snapshot.indentScopeMode === 'exclude' ? 'exclude' : 'include';
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         applyReadingStyleNow();
         scheduleScan({ full: true });
     };
@@ -2331,14 +2330,14 @@ export function initDisplaySettingsTab() {
     readingPresetDefaultEl?.addEventListener('change', () => {
         if (!(readingPresetDefaultEl instanceof HTMLSelectElement)) return;
         settings.defaultReadingPresetId = String(readingPresetDefaultEl.value || '');
-        saveSettingsDebounced();
+        scheduleNyFontSave();
     });
 
     document.getElementById('nytw_scope_bind_save')?.addEventListener('click', () => {
         const name = getCurrentStPresetName();
         if (!name) return;
         getScopeBindings()[name] = getScopeSnapshot();
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         updateScopeBindUi();
     });
 
@@ -2355,7 +2354,7 @@ export function initDisplaySettingsTab() {
         const bindings = getScopeBindings();
         if (Object.prototype.hasOwnProperty.call(bindings, name)) {
             delete bindings[name];
-            saveSettingsDebounced();
+            scheduleNyFontSave();
         }
         updateScopeBindUi();
     });
@@ -2364,7 +2363,7 @@ export function initDisplaySettingsTab() {
         const el = event.target;
         if (!(el instanceof HTMLInputElement)) return;
         settings.indentPresetAutoApply = el.checked;
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         if (el.checked) applyScopeBindingForCurrentPreset();
         updateScopeBindUi();
     });
@@ -2443,7 +2442,7 @@ export function initDisplaySettingsTab() {
             ...(readingPresetFontsEl.checked ? { fonts: normalizePresetFonts(settings) } : {}),
         };
         upsertReadingStylePreset(preset);
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         syncReadingPresetSelect(preset.id);
         notify('success', '已保存阅读样式预设：' + preset.name);
     });
@@ -2468,7 +2467,7 @@ export function initDisplaySettingsTab() {
         }
         if (!window.confirm('确定删除阅读样式预设“' + preset.name + '”？')) return;
         settings.readingStylePresets = settings.readingStylePresets.filter((item) => item.id !== presetId);
-        saveSettingsDebounced();
+        scheduleNyFontSave();
         syncReadingPresetSelect('');
         notify('success', `已删除阅读样式预设：${preset.name}`);
     });

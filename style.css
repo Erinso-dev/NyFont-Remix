@@ -4001,5 +4001,5 @@
 
 /* 弹层临时挂到 body 上时，确保盖在美化玻璃层之上 */
 .nytw-font-picker-popup.is-portaled {
-    z-index: 10000;
+    z-index: 2147483647;
 }

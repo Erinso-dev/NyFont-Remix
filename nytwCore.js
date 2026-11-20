@@ -926,203 +926,71 @@ function buildReadingPreviewFontCss(globalFontCss, bodyFontCss, dialogueFontCss)
 
 /* ---------------- 全局字体应用范围（正文外字体跟随，同时保留美化装饰字体） ---------------- */
 
+/* ---------------- 全局字体：按酒馆界面区域用纯 CSS 接管 ---------------- */
+
 const GLOBAL_FONT_ON_CLASS = 'nytw-global-font-on';
-const GLOBAL_FONT_MARK_ATTR = 'data-nytw-globalfont';
-const GLOBAL_FONT_SKIP_SELECTOR = '.mes_text, code, pre, kbd, samp, script, style, [class*="fa-"], [class^="fa"], .fa, .fas, .far, .fal, .fab, .fa-solid, .fa-regular, .fa-brands';
-const GLOBAL_FONT_TARGET_SELECTORS = [
-    '#chat', '#top-bar', '#top-settings-holder', '#top-settings-holder .drawer',
-    '#left-nav-panel', '#right-nav-panel', '#options', '#send_form',
-    '#character_popup', '#world_popup', '#extensionsMenu', '#extensions_settings',
-    '#extensions_settings2', '#quick-reply-menu', '#completion_prompt_manager_list',
-    '#nonQRFormItems', '#form_sheld', '#nytw_settings_root', '.drawer-content',
-    '.inline-drawer', '.popup', 'dialog.popup',
-    '#ilg-studio', '#ilg-appearance-panel', '#ilg-fold-menu', '#ilg-home',
+// 界面区域 = 酒馆各部位 + 常见美化/扩展面板；选择器不存在时匹配为空，没有副作用。
+const UI_SCOPE_SELECTORS = [
+    '#top-bar', '#top-settings-holder', '.drawer-content', '#left-nav-panel', '#right-nav-panel',
+    '#extensions_settings', '#extensions_settings2', '#extensionsMenu', '#options',
+    '#character_popup', '#world_popup', '#dialogue_popup', 'dialog.popup', '.popup',
+    '#send_form', '#form_sheld', '#nonQRFormItems', '#toast-container', '.swipes-counter',
+    '.inline-drawer', '.standoutHeader', '#user-settings-block', '#persona-management-block',
+    '#chat', '#ilg-studio', '#ilg-appearance-panel', '#ilg-fold-menu', '#ilg-home',
     '#nvwa-panel', '#nvwa-memory',
 ];
-const GLOBAL_FONT_TARGET_SELECTOR_STRING = GLOBAL_FONT_TARGET_SELECTORS.join(',');
-// 采样「界面主字体」：只读这些容器当前实际生效的字体栈（它们有美化/酒馆的显式字体规则，
-// 不会被插件的 body 全局字体污染），不需要清空样式表，性能开销很小。
-const GLOBAL_FONT_SAMPLE_SELECTORS = [
-    '#top-bar', '#top-settings-holder', '#top-settings-holder .drawer-content',
-    '#extensions_settings', '#extensions_settings2', '#options', '#send_form',
-    '#extensionsMenu', '#character_popup', '#world_popup', '#quick-reply-menu',
-    'dialog.popup', '.drawer-content', '#ilg-studio', '#ilg-appearance-panel',
-    '#ilg-fold-menu', '#nvwa-panel', '#nvwa-memory',
-];
-let cachedThemeFontStacks = new Set();
-let cachedThemeFirstFamilies = new Set();
-let lastGlobalFontCss = '';
-let lastGlobalFontScope = 'ui';
-let globalFontLazyTimer = 0;
+
+// 图标/代码/正文子树不参与全局字体：正文、对话、包裹、多语言字体永远优先
+const GLOBAL_FONT_TEXT_EXCLUSIONS = ':not([class*="fa-"]):not([class^="fa"]):not(.fa):not(.fa-solid):not(.fa-regular):not(.fa-brands):not(.drawer-icon):not(code):not(pre):not(kbd):not(samp):not(.mes_text):not(.mes_text *)';
+
+function buildGlobalFontScopeCss(globalFontCss, scope) {
+    if (!globalFontCss) return '';
+    if (scope !== 'ui' && scope !== 'all') return '';
+    const lines = ['\n/* Global Font Scope */\n'];
+    // 变量兜底：NVWA 这类美化用 var(--mainFontFamily) 写字
+    lines.push(`html.${GLOBAL_FONT_ON_CLASS}{--font-main:${globalFontCss} !important;--mainFontFamily:${globalFontCss} !important;}`);
+    lines.push(`html.${GLOBAL_FONT_ON_CLASS} body{--font-main:${globalFontCss} !important;--mainFontFamily:${globalFontCss} !important;}`);
+    const uiScopeExpanded = UI_SCOPE_SELECTORS.flatMap((selector) => [selector, `${selector} *`]).join(', ');
+    const targets = scope === 'ui' ? `:where(${uiScopeExpanded})` : ':where(*, * *)';
+    lines.push(`body:not(#nytw-font-force-a):not(#nytw-font-force-b):not(#nytw-font-force-c) ${targets}${GLOBAL_FONT_TEXT_EXCLUSIONS}{font-family:${globalFontCss} !important;}`);
+    return lines.join('\n');
+}
+
+// 字体解析缓存：换字体时只重新解析变化的那一项，避免每次都重新校验字体
+const resolvedFontCssCache = new Map();
+let lastImportedFontsSignature = '';
 let lastCustomWrapSignature = '';
-const globalFontLazyNodes = new Set();
 
-function normalizeFontStack(value) {
-    return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
-}
-
-function firstFamilyOfFontStack(value) {
-    const first = normalizeFontStack(value).split(',')[0] || '';
-    return first.replace(/^['"]+|['"]+$/g, '').trim();
-}
-
-function hasCachedThemeFonts() {
-    return cachedThemeFontStacks.size > 0 || cachedThemeFirstFamilies.size > 0;
-}
-
-/**
- * 采样界面主字体（很轻：只读十来个容器的 computed font + 两个主题变量）。
- * 返回字体集合是否有变化，供上层判断要不要全量重扫。
- */
-function captureThemeFontFamilies() {
-    const html = document.documentElement;
-    const hadClass = html.classList.contains(GLOBAL_FONT_ON_CLASS);
-    if (hadClass) html.classList.remove(GLOBAL_FONT_ON_CLASS);
-
-    const sampledEls = [];
-    for (const selector of GLOBAL_FONT_SAMPLE_SELECTORS) {
-        try {
-            document.querySelectorAll(selector).forEach((el) => {
-                if (el instanceof HTMLElement) sampledEls.push(el);
-            });
-        } catch { /* ignore */ }
-    }
-    // 采样元素可能已经被插件写过内联字体，临时移除后再读，避免读到自己写的全局字体
-    const savedInline = sampledEls.map((el) => [el, el.style.getPropertyValue('font-family'), el.style.getPropertyPriority('font-family')]);
-    for (const [el] of savedInline) el.style.removeProperty('font-family');
-
-    const stacks = new Set();
-    const firsts = new Set();
+function importedFontsSignature() {
     try {
-        const sample = (el) => {
-            if (!el) return;
-            const stack = normalizeFontStack(getComputedStyle(el).fontFamily);
-            if (!stack) return;
-            stacks.add(stack);
-            const first = firstFamilyOfFontStack(stack);
-            if (first) firsts.add(first);
-        };
-        sampledEls.forEach(sample);
-        try {
-            const rootStyle = getComputedStyle(html);
-            for (const name of ['--font-main', '--mainFontFamily']) {
-                const stack = normalizeFontStack(rootStyle.getPropertyValue(name));
-                if (!stack) continue;
-                stacks.add(stack);
-                const first = firstFamilyOfFontStack(stack);
-                if (first) firsts.add(first);
-            }
-        } catch { /* ignore */ }
-    } finally {
-        for (const [el, value, priority] of savedInline) {
-            if (value) el.style.setProperty('font-family', value, priority);
-        }
-        if (hadClass) html.classList.add(GLOBAL_FONT_ON_CLASS);
-    }
-
-    const changed = stacks.size !== cachedThemeFontStacks.size
-        || firsts.size !== cachedThemeFirstFamilies.size
-        || [...stacks].some((v) => !cachedThemeFontStacks.has(v))
-        || [...firsts].some((v) => !cachedThemeFirstFamilies.has(v));
-    cachedThemeFontStacks = stacks;
-    cachedThemeFirstFamilies = firsts;
-    return changed;
-}
-
-function removeGlobalFontInlineOverrides() {
-    document.querySelectorAll(`[${GLOBAL_FONT_MARK_ATTR}]`).forEach((el) => {
-        if (!(el instanceof HTMLElement)) return;
-        el.style.removeProperty('font-family');
-        el.removeAttribute(GLOBAL_FONT_MARK_ATTR);
-    });
-}
-
-function clearGlobalFontOverrides() {
-    removeGlobalFontInlineOverrides();
-    document.documentElement.classList.remove(GLOBAL_FONT_ON_CLASS);
-}
-
-function updateMarkedGlobalFont(globalFontCss) {
-    document.querySelectorAll(`[${GLOBAL_FONT_MARK_ATTR}]`).forEach((el) => {
-        if (el instanceof HTMLElement) el.style.setProperty('font-family', globalFontCss, 'important');
-    });
-}
-
-function syncGlobalFontOverrideElement(el, globalFontCss) {
-    if (!(el instanceof HTMLElement)) return;
-    if (el.closest(GLOBAL_FONT_SKIP_SELECTOR)) return;
-    if (el.hasAttribute(GLOBAL_FONT_MARK_ATTR)) {
-        el.style.setProperty('font-family', globalFontCss, 'important');
-        return;
-    }
-    if (!hasCachedThemeFonts()) return;
-    const stack = normalizeFontStack(getComputedStyle(el).fontFamily);
-    if (!stack) return;
-    const first = firstFamilyOfFontStack(stack);
-    const matched = cachedThemeFontStacks.has(stack)
-        || (first && cachedThemeFirstFamilies.has(first));
-    if (!matched) return;
-    el.setAttribute(GLOBAL_FONT_MARK_ATTR, '1');
-    el.style.setProperty('font-family', globalFontCss, 'important');
-}
-
-/**
- * 把「美化里写死为界面主字体」的元素改成插件全局字体。
- * root 为空时扫描整个界面；传入容器时只扫该容器（面板懒加载/新消息的增量处理）。
- */
-function syncGlobalFontOverrides(globalFontCss, root = null) {
-    if (!globalFontCss || !hasCachedThemeFonts()) return;
-    const scan = (rootEl) => {
-        if (!(rootEl instanceof HTMLElement)) return;
-        syncGlobalFontOverrideElement(rootEl, globalFontCss);
-        rootEl.querySelectorAll('*').forEach((el) => syncGlobalFontOverrideElement(el, globalFontCss));
-    };
-    if (root instanceof HTMLElement) {
-        scan(root);
-        return;
-    }
-    for (const selector of GLOBAL_FONT_TARGET_SELECTORS) {
-        document.querySelectorAll(selector).forEach(scan);
+        return JSON.stringify((Array.isArray(settings.importedFonts) ? settings.importedFonts : []).map((item) => item?.id || item?.name || ''));
+    } catch {
+        return '';
     }
 }
 
-/**
- * 面板/弹窗是懒加载的：新插进来的界面内容去做一次「局部」字体接管即可，
- * 不用整页重扫。这里做 120ms 去抖，流式输出时不跑。
- */
-function scheduleLazyGlobalFontSync(node) {
-    if (!lastGlobalFontCss || lastGlobalFontScope !== 'ui') return;
-    if (!(node instanceof Element)) return;
-    if (getActiveStreamingMessageId()) return;
-    try {
-        if (!node.closest(GLOBAL_FONT_TARGET_SELECTOR_STRING)) return;
-    } catch { return; }
-    globalFontLazyNodes.add(node);
-    if (globalFontLazyTimer) return;
-    globalFontLazyTimer = setTimeout(() => {
-        globalFontLazyTimer = 0;
-        const nodes = Array.from(globalFontLazyNodes);
-        globalFontLazyNodes.clear();
-        if (!lastGlobalFontCss || lastGlobalFontScope !== 'ui') return;
-        const fontCss = lastGlobalFontCss;
-        nodes.forEach((n) => {
-            if (n instanceof HTMLElement && n.isConnected) {
-                try { syncGlobalFontOverrides(fontCss, n); } catch { /* ignore */ }
-            }
-        });
-    }, 120);
+async function resolveFontCssCached(raw, label) {
+    const key = `${label}::${String(raw || '')}`;
+    if (resolvedFontCssCache.has(key)) return resolvedFontCssCache.get(key);
+    const resolved = await resolveValidatedFontCss(raw, label);
+    if (!resolved || !resolved.ok) {
+        // 结果不稳定（字体还没加载完等），不缓存失败结果，下次重试
+        return resolved;
+    }
+    resolvedFontCssCache.set(key, resolved);
+    return resolved;
 }
 
 async function applyFontSettings() {
     const styleEl = ensureFontStyleElement();
-    // 只有「正文 + 界面」模式需要识别界面主字体；采样很轻，且只反映是否变化
-    let themeFontsChanged = false;
-    if (settings.fontsEnabled && normalizeGlobalFontScope(settings.globalFontScope) === 'ui') {
-        try { themeFontsChanged = captureThemeFontFamilies(); } catch { themeFontsChanged = false; }
+    // 导入字体列表变化时清掉解析缓存（本地字体文件可能换过）
+    const importedSignature = importedFontsSignature();
+    if (importedSignature !== lastImportedFontsSignature) {
+        lastImportedFontsSignature = importedSignature;
+        resolvedFontCssCache.clear();
     }
     if (!settings.fontsEnabled) {
         styleEl.textContent = '';
-        clearGlobalFontOverrides();
         revokeAllFontObjectUrls();
         syncExternalFontStylesheets([]);
         fontValidationNoticeSigByField.clear();
@@ -1135,10 +1003,10 @@ async function applyFontSettings() {
 
     invalidConfiguredFontFamilies.clear();
 
-    const resolvedGlobal = await resolveValidatedFontCss(settings.globalFont, '全局字体');
-    const resolvedBody = await resolveValidatedFontCss(settings.bodyFont, '正文字体');
-    const resolvedDialogue = await resolveValidatedFontCss(settings.dialogueFont, '对话字体');
-    const resolvedCustom = await resolveValidatedFontCss(settings.customFont, '自定义包裹字体');
+    const resolvedGlobal = await resolveFontCssCached(settings.globalFont, '全局字体');
+    const resolvedBody = await resolveFontCssCached(settings.bodyFont, '正文字体');
+    const resolvedDialogue = await resolveFontCssCached(settings.dialogueFont, '对话字体');
+    const resolvedCustom = await resolveFontCssCached(settings.customFont, '自定义包裹字体');
     const resolvedCustomRules = [];
     for (const rule of (Array.isArray(settings.customFontRules) ? settings.customFontRules : [])) {
         const open = String(rule?.open || '').trim();
@@ -1149,7 +1017,7 @@ async function applyFontSettings() {
             resolvedCustomRules.push({ open, close, fontCss: '', families: [] });
             continue;
         }
-        const resolved = await resolveValidatedFontCss(rawFont, '包裹字符字体');
+        const resolved = await resolveFontCssCached(rawFont, '包裹字符字体');
         resolvedCustomRules.push({ open, close, fontCss: resolved.css, families: resolved.families });
     }
     activeCustomRules = resolvedCustomRules.map((r) => ({ open: r.open, close: r.close, fontCss: r.fontCss }));
@@ -1191,30 +1059,23 @@ async function applyFontSettings() {
     }
 
     if (globalFontCss) {
-        css += '\n/* Global Font Override */\n';
-        css += `\nbody{font-family:${globalFontCss} !important;}`;
-        css += `\n#sillytavern{font-family:${globalFontCss} !important;}`;
-        css += `\ninput,textarea,select,button{font-family:${globalFontCss} !important;}`;
-        // 酒馆给弹层加 .font-family-reset（强制回到主题主字体），需要单独覆盖
-        css += [
-            '\n#options,#options .options-content,#options a,#options span,',
-            '.font-family-reset,.font-family-reset a,.font-family-reset div,',
-            '.font-family-reset span,.font-family-reset label,.font-family-reset p,',
-            '.font-family-reset li,.font-family-reset input,',
-            '.font-family-reset select,.font-family-reset textarea',
-            `{font-family:${globalFontCss} !important;}`,
-        ].join('');
-
         const globalFontScope = normalizeGlobalFontScope(settings.globalFontScope);
-        if (globalFontScope === 'ui' || globalFontScope === 'all') {
-            // 主题/酒馆自己声明主字体的变量：换成插件的全局字体，
-            // 凡是用 var(--font-main) / var(--mainFontFamily) 的地方自动跟随；
-            // 写死装饰字体（别的字体名）的地方不受影响。
-            css += `\nhtml.${GLOBAL_FONT_ON_CLASS}{--font-main:${globalFontCss} !important;--mainFontFamily:${globalFontCss} !important;}`;
-            css += `\nhtml.${GLOBAL_FONT_ON_CLASS} body{--font-main:${globalFontCss} !important;--mainFontFamily:${globalFontCss} !important;}`;
-        }
-        if (globalFontScope === 'all') {
-            css += `\nhtml.${GLOBAL_FONT_ON_CLASS} body:not(#nytw-force-a):not(#nytw-force-b):not(#nytw-force-c) :where(*:not([class*="fa-"]):not([class^="fa"]):not(code):not(pre):not(kbd):not(samp)){font-family:${globalFontCss} !important;}`;
+        // 「只作用正文」时不动界面；全局字体只作为正文没设字体时的兜底
+        if (globalFontScope !== 'body') {
+            css += '\n/* Global Font Override */\n';
+            css += `\nbody{font-family:${globalFontCss} !important;}`;
+            css += `\n#sillytavern{font-family:${globalFontCss} !important;}`;
+            css += `\ninput,textarea,select,button{font-family:${globalFontCss} !important;}`;
+            // 酒馆给弹层加 .font-family-reset（强制回到主题主字体），需要单独覆盖
+            css += [
+                '\n#options,#options .options-content,#options a,#options span,',
+                '.font-family-reset,.font-family-reset a,.font-family-reset div,',
+                '.font-family-reset span,.font-family-reset label,.font-family-reset p,',
+                '.font-family-reset li,.font-family-reset input,',
+                '.font-family-reset select,.font-family-reset textarea',
+                `{font-family:${globalFontCss} !important;}`,
+            ].join('');
+            css += buildGlobalFontScopeCss(globalFontCss, globalFontScope);
         }
     }
 
@@ -1355,33 +1216,12 @@ async function applyFontSettings() {
     applyTypographyVariables();
     syncTextAnimationTargets();
 
-    // 全局字体范围：ui 模式用「变量覆盖 + 主字体检测」保留装饰字体；all 模式交给 CSS 通配
+    // 纯 CSS 生效：只切一个 html class，不再做任何运行时检测/内联字体
     const appliedGlobalFontScope = normalizeGlobalFontScope(settings.globalFontScope);
-    const globalFontChanged = globalFontCss !== lastGlobalFontCss;
-    const scopeChanged = appliedGlobalFontScope !== lastGlobalFontScope;
-    const hadMarks = document.querySelector(`[${GLOBAL_FONT_MARK_ATTR}]`) !== null;
-    lastGlobalFontCss = globalFontCss;
-    lastGlobalFontScope = appliedGlobalFontScope;
-
-    // 先在「未覆盖主字体变量」的状态下做检测：这时元素字体栈和采样时一致，
-    // 不会被插件自己注入的全局字体串干扰；检测完再打开变量覆盖类。
-    document.documentElement.classList.remove(GLOBAL_FONT_ON_CLASS);
-    if (globalFontCss && appliedGlobalFontScope === 'ui') {
-        if (!themeFontsChanged && !scopeChanged && hadMarks && globalFontChanged) {
-            // 只是换了全局字体：只更新已经接管过的元素，不再整页扫描（换字体不卡）
-            updateMarkedGlobalFont(globalFontCss);
-        } else if (themeFontsChanged || scopeChanged || !hadMarks || globalFontChanged) {
-            removeGlobalFontInlineOverrides();
-            syncGlobalFontOverrides(globalFontCss);
-        }
-        if (!themeFontsChanged && !scopeChanged && hadMarks && !globalFontChanged) {
-            // 什么都没变，保持现状
-        }
-    } else {
-        removeGlobalFontInlineOverrides();
-    }
     if (globalFontCss && appliedGlobalFontScope !== 'body') {
         document.documentElement.classList.add(GLOBAL_FONT_ON_CLASS);
+    } else {
+        document.documentElement.classList.remove(GLOBAL_FONT_ON_CLASS);
     }
 
     // 包裹规则的字体是直接写在元素内联样式上的，CSS 更新不会自动生效；
@@ -3138,9 +2978,6 @@ function flushScan() {
         const containers = Array.from(pendingContainers);
         pendingContainers.clear();
         containers.forEach(processContainer);
-        if (lastGlobalFontCss && lastGlobalFontScope === 'ui') {
-            try { containers.forEach((el) => syncGlobalFontOverrides(lastGlobalFontCss, el)); } catch { /* no-op */ }
-        }
         if (!getActiveStreamingMessageId()) syncTextAnimationTargets();
     } finally {
         queueMicrotask(() => {
@@ -3177,10 +3014,7 @@ const observer = new MutationObserver((mutations) => {
     const containers = new Set();
     for (const m of mutations) {
         maybeAddMesTextContainerFromNode(m.target, containers);
-        m.addedNodes?.forEach((n) => {
-            maybeAddMesTextContainerFromNode(n, containers);
-            scheduleLazyGlobalFontSync(n);
-        });
+        m.addedNodes?.forEach((n) => maybeAddMesTextContainerFromNode(n, containers));
     }
 
     if (containers.size) {
