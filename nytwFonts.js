@@ -1263,20 +1263,32 @@ function renderFontPopupList(popupEl, filterText, onSelect) {
 function setupPicker(inputEl, popupEl, renderContent, onSave) {
     if (!inputEl || !popupEl) return;
 
+    let homeParent = null;
+    let portaled = false;
+
     const hidePopup = () => {
         popupEl.classList.remove('is-open');
+        popupEl.classList.remove('is-portaled');
         delete popupEl.dataset.activeTag;
         delete popupEl.dataset.searchText;
+        if (portaled) {
+            portaled = false;
+            if (homeParent && homeParent.isConnected) homeParent.appendChild(popupEl);
+            else if (popupEl.parentElement === document.body) popupEl.remove();
+            homeParent = null;
+        }
     };
 
     const positionPopup = () => {
-        // 不移动元素：只用 fixed 定位。
-        // fixed 的包含块是视口，所以面板的 overflow 裁不到它，
-        // 同时元素仍在原来的层级里，样式和事件都不受影响。
+        // 弹层会被临时挂到 body 上再定位：避免被美化抽屉的 clip-path / filter
+        // 变成「相对抽屉」的 fixed，导致位置往上跑。
         try {
             const rect = inputEl.getBoundingClientRect();
             const margin = 8;
             const width = Math.min(320, Math.max(220, window.innerWidth - margin * 2));
+            const vv = window.visualViewport;
+            const viewportHeight = Math.round(vv?.height || window.innerHeight);
+            const viewportOffsetTop = Math.round(vv?.offsetTop || 0);
 
             let left = rect.left;
             left = Math.min(Math.max(margin, left), Math.max(margin, window.innerWidth - width - margin));
@@ -1287,25 +1299,34 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
             popupEl.style.width = width + 'px';
             popupEl.style.maxWidth = 'none';
             popupEl.style.left = left + 'px';
-            // 先放到输入框下方，渲染完再按实际高度决定是否翻到上方
-            // 用 visualViewport 高度，键盘弹起后仍能把搜索栏留在可视区内
-            const viewportHeight = Math.round(window.visualViewport?.height || window.innerHeight);
             popupEl.style.maxHeight = Math.round(viewportHeight * 0.5) + 'px';
-            popupEl.style.top = (rect.bottom + 6) + 'px';
+
+            // 输入框顶部/底部换算到 visualViewport 坐标
+            const anchorBottom = rect.bottom - viewportOffsetTop;
+            const anchorTop = rect.top - viewportOffsetTop;
 
             const height = Math.min(popupEl.offsetHeight || 240, Math.round(viewportHeight * 0.5));
-            let top = rect.bottom + 6;
+            let top = anchorBottom + 6;
             if (top + height > viewportHeight - margin) {
-                const up = rect.top - height - 6;
-                top = up > margin ? up : Math.max(margin, viewportHeight - height - margin);
+                const up = anchorTop - height - 6;
+                top = up > margin ? up : viewportHeight - height - margin;
             }
-            popupEl.style.top = top + 'px';
+            // 最后再钳一次，保证不飞出可视区
+            top = Math.min(Math.max(margin, top), Math.max(margin, viewportHeight - height - margin));
+            popupEl.style.top = Math.round(viewportOffsetTop + top) + 'px';
         } catch (error) {
             console.warn('[NyTW] positionPopup failed', error);
         }
     };
 
     const showPopup = () => {
+        if (popupEl.classList.contains('is-open')) return;
+        if (!portaled) {
+            homeParent = popupEl.parentElement;
+            document.body.appendChild(popupEl);
+            popupEl.classList.add('is-portaled');
+            portaled = true;
+        }
         const initialFilter = inputEl.readOnly ? '' : inputEl.value;
         renderContent(popupEl, initialFilter, (selectedValue, displayLabel) => {
             inputEl.value = displayLabel || selectedValue;
@@ -1314,14 +1335,20 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
         });
         popupEl.classList.add('is-open');
         positionPopup();
+        // 等列表/搜索栏渲染完成后再按真实高度校正一次
+        requestAnimationFrame(() => {
+            if (popupEl.classList.contains('is-open')) positionPopup();
+        });
     };
 
-    // 打开弹层时不要把焦点给输入框（否则安卓会立刻弹键盘）；
-    // 只有点弹层里的搜索栏才出现键盘。
-    inputEl.addEventListener('pointerdown', (event) => {
-        if (event.button !== undefined && event.button !== 0) return;
+    // 滑动经过输入框时不要误开弹层：
+    // 用 click 打开（滑动/拖拽不会产生 click，只有真正点一下才会）。
+    // mousedown 阻止默认行为，避免输入框获得焦点后安卓弹出键盘。
+    inputEl.addEventListener('mousedown', (event) => {
         event.preventDefault();
-        event.stopPropagation();
+    });
+    inputEl.addEventListener('click', (event) => {
+        event.preventDefault();
         showPopup();
     });
     inputEl.addEventListener('focus', () => {

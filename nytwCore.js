@@ -930,42 +930,87 @@ const GLOBAL_FONT_ON_CLASS = 'nytw-global-font-on';
 const GLOBAL_FONT_MARK_ATTR = 'data-nytw-globalfont';
 const GLOBAL_FONT_SKIP_SELECTOR = '.mes_text, code, pre, kbd, samp, script, style, [class*="fa-"], [class^="fa"], .fa, .fas, .far, .fal, .fab, .fa-solid, .fa-regular, .fa-brands';
 const GLOBAL_FONT_TARGET_SELECTORS = [
-    '#chat', '#top-bar', '#top-settings-holder', '#left-nav-panel', '#right-nav-panel',
-    '#options', '#send_form', '#character_popup', '#world_popup', '#extensionsMenu',
-    '#extensions_settings', '#quick-reply-menu', '#completion_prompt_manager_list',
-    '#nytw_settings_root', '.drawer-content', '.popup',
+    '#chat', '#top-bar', '#top-settings-holder', '#top-settings-holder .drawer',
+    '#left-nav-panel', '#right-nav-panel', '#options', '#send_form',
+    '#character_popup', '#world_popup', '#extensionsMenu', '#extensions_settings',
+    '#extensions_settings2', '#quick-reply-menu', '#completion_prompt_manager_list',
+    '#nonQRFormItems', '#form_sheld', '#nytw_settings_root', '.drawer-content',
+    '.inline-drawer', '.popup', 'dialog.popup',
+    '#ilg-studio', '#ilg-appearance-panel', '#ilg-fold-menu', '#ilg-home',
+    '#nvwa-panel', '#nvwa-memory',
 ];
-let cachedThemeFontFamilies = new Set();
+// 采样「界面/正文主字体」用的代表节点：关掉插件字体后读它们实际生效的 font-family。
+// 美化不一定提供 --font-main / --mainFontFamily（比如 NVWA 用的是自己的 --ilg-ui-font），
+// 所以按「实际字体栈」认，比只认变量可靠。
+const GLOBAL_FONT_SAMPLE_SELECTORS = [
+    'body', '#chat .mes_text', '#top-bar', '#top-settings-holder',
+    '#top-settings-holder .drawer-content', '#extensions_settings', '#extensions_settings2',
+    '#options', '#send_form', '#extensionsMenu',
+];
+let cachedThemeFontStacks = new Set();
+let cachedThemeFirstFamilies = new Set();
 let lastGlobalFontCss = '';
 let lastGlobalFontScope = 'ui';
 
-/** 取字体列表里的第一个字体名（用于比较） */
-function parseFirstFontFamilyName(value) {
-    const raw = String(value || '').trim();
-    if (!raw) return '';
-    const first = raw.split(',')[0].trim();
-    return first.replace(/^['"]+|['"]+$/g, '').toLowerCase();
+function normalizeFontStack(value) {
+    return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
-/** 临时关掉插件的主字体变量覆盖，读美化真正的主字体 */
+function firstFamilyOfFontStack(value) {
+    const first = normalizeFontStack(value).split(',')[0] || '';
+    return first.replace(/^['"]+|['"]+$/g, '').trim();
+}
+
+/**
+ * 临时关掉插件自己的字体规则 / 主字体变量覆盖 / 内联字体，读取美化真正在用的字体。
+ * 装饰字体通常不在这个集合里，因此不会被插件改动。
+ */
 function captureThemeFontFamilies() {
     const html = document.documentElement;
     const hadClass = html.classList.contains(GLOBAL_FONT_ON_CLASS);
     if (hadClass) html.classList.remove(GLOBAL_FONT_ON_CLASS);
+
+    const fontStyleEl = document.getElementById('nytw-font-style');
+    const prevFontCss = fontStyleEl ? fontStyleEl.textContent : '';
+    if (fontStyleEl) fontStyleEl.textContent = '';
+
+    // 暂时移除插件加的内联字体，避免采样时读到自己写入的全局字体
+    const marked = Array.from(document.querySelectorAll(`[${GLOBAL_FONT_MARK_ATTR}]`));
+    const savedInline = marked.map((el) => [el, el.style.getPropertyValue('font-family'), el.style.getPropertyPriority('font-family')]);
+    for (const [el] of savedInline) el.style.removeProperty('font-family');
+
     try {
-        const names = new Set();
-        const read = (el) => {
+        const stacks = new Set();
+        const firsts = new Set();
+        const sample = (el) => {
             if (!el) return;
-            const style = getComputedStyle(el);
-            for (const name of ['--font-main', '--mainFontFamily']) {
-                const family = parseFirstFontFamilyName(style.getPropertyValue(name));
-                if (family) names.add(family);
-            }
+            const stack = normalizeFontStack(getComputedStyle(el).fontFamily);
+            if (!stack) return;
+            stacks.add(stack);
+            const first = firstFamilyOfFontStack(stack);
+            if (first) firsts.add(first);
         };
-        read(html);
-        read(document.body);
-        cachedThemeFontFamilies = names;
+        for (const selector of GLOBAL_FONT_SAMPLE_SELECTORS) {
+            try { sample(document.querySelector(selector)); } catch { /* ignore */ }
+        }
+        // 主题变量里声明的字体也算进来（不同主题写法差异很大）
+        try {
+            const rootStyle = getComputedStyle(html);
+            for (const name of ['--font-main', '--mainFontFamily']) {
+                const stack = normalizeFontStack(rootStyle.getPropertyValue(name));
+                if (!stack) continue;
+                stacks.add(stack);
+                const first = firstFamilyOfFontStack(stack);
+                if (first) firsts.add(first);
+            }
+        } catch { /* ignore */ }
+        cachedThemeFontStacks = stacks;
+        cachedThemeFirstFamilies = firsts;
     } finally {
+        for (const [el, value, priority] of savedInline) {
+            if (value) el.style.setProperty('font-family', value, priority);
+        }
+        if (fontStyleEl) fontStyleEl.textContent = prevFontCss;
         if (hadClass) html.classList.add(GLOBAL_FONT_ON_CLASS);
     }
 }
@@ -983,6 +1028,10 @@ function clearGlobalFontOverrides() {
     document.documentElement.classList.remove(GLOBAL_FONT_ON_CLASS);
 }
 
+function hasCachedThemeFonts() {
+    return cachedThemeFontStacks.size > 0 || cachedThemeFirstFamilies.size > 0;
+}
+
 function syncGlobalFontOverrideElement(el, globalFontCss) {
     if (!(el instanceof HTMLElement)) return;
     if (el.closest(GLOBAL_FONT_SKIP_SELECTOR)) return;
@@ -990,19 +1039,23 @@ function syncGlobalFontOverrideElement(el, globalFontCss) {
         el.style.setProperty('font-family', globalFontCss, 'important');
         return;
     }
-    if (!cachedThemeFontFamilies.size) return;
-    const current = parseFirstFontFamilyName(getComputedStyle(el).fontFamily);
-    if (!current || !cachedThemeFontFamilies.has(current)) return;
+    if (!hasCachedThemeFonts()) return;
+    const stack = normalizeFontStack(getComputedStyle(el).fontFamily);
+    if (!stack) return;
+    const first = firstFamilyOfFontStack(stack);
+    const matched = cachedThemeFontStacks.has(stack)
+        || (first && cachedThemeFirstFamilies.has(first));
+    if (!matched) return;
     el.setAttribute(GLOBAL_FONT_MARK_ATTR, '1');
     el.style.setProperty('font-family', globalFontCss, 'important');
 }
 
 /**
- * 把「美化里写死为主字体」的元素改成插件全局字体。
+ * 把「美化里写死为界面/正文主字体」的元素改成插件全局字体。
  * root 为空时扫描整个界面；传入容器时只扫该容器（消息渲染后的增量处理）。
  */
 function syncGlobalFontOverrides(globalFontCss, root = null) {
-    if (!globalFontCss || !cachedThemeFontFamilies.size) return;
+    if (!globalFontCss || !hasCachedThemeFonts()) return;
     const scan = (rootEl) => {
         if (!(rootEl instanceof HTMLElement)) return;
         syncGlobalFontOverrideElement(rootEl, globalFontCss);
@@ -1260,14 +1313,15 @@ async function applyFontSettings() {
     const appliedGlobalFontScope = normalizeGlobalFontScope(settings.globalFontScope);
     lastGlobalFontCss = globalFontCss;
     lastGlobalFontScope = appliedGlobalFontScope;
+    // 先在「未覆盖主字体变量」的状态下做检测：这时元素字体栈和采样时一致，
+    // 不会被我们自己注入的全局字体串干扰；检测完再打开变量覆盖类。
+    document.documentElement.classList.remove(GLOBAL_FONT_ON_CLASS);
     removeGlobalFontInlineOverrides();
-    if (globalFontCss && appliedGlobalFontScope !== 'body') {
-        document.documentElement.classList.add(GLOBAL_FONT_ON_CLASS);
-    } else {
-        document.documentElement.classList.remove(GLOBAL_FONT_ON_CLASS);
-    }
     if (globalFontCss && appliedGlobalFontScope === 'ui') {
         syncGlobalFontOverrides(globalFontCss);
+    }
+    if (globalFontCss && appliedGlobalFontScope !== 'body') {
+        document.documentElement.classList.add(GLOBAL_FONT_ON_CLASS);
     }
 
     // 包裹规则的字体是直接写在元素内联样式上的，CSS 更新不会自动生效；
