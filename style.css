@@ -2981,8 +2981,9 @@
     z-index: 2;
     margin: -4px -4px 4px;
     padding: 5px 6px;
-    background: rgba(30, 30, 30, 0.96);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    /* 跟随主题底色，避免亮色主题下「深色条 + 深色字」看不清 */
+    background: var(--SmartThemeBlurTintColor, #2a2a2a);
+    border-bottom: 1px solid rgba(127, 127, 127, 0.22);
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
@@ -4020,4 +4021,20 @@
 
 .nytw-font-picker-popup[popover]::backdrop {
     background: transparent;
+}
+
+/* 字体选择弹层里的标签芯片：中性灰，亮/暗主题都看得清 */
+.nytw-font-picker-popup .nytw-tag-chip:hover {
+    background: rgba(127, 127, 127, 0.24) !important;
+    border-color: rgba(127, 127, 127, 0.4) !important;
+}
+
+.nytw-font-picker-popup .nytw-tag-chip.is-active {
+    background: rgba(127, 127, 127, 0.32) !important;
+    border-color: rgba(127, 127, 127, 0.55) !important;
+}
+
+/* 弹层顶部吸顶条与 popover 底色保持一致 */
+.nytw-font-picker-popup[popover] .nytw-font-popup-header {
+    background: var(--SmartThemeBlurTintColor, #2a2a2a);
 }
