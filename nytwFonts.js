@@ -1286,8 +1286,8 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
     };
 
     const positionPopup = () => {
-        // 弹层会被临时挂到 body 上再定位：避免被美化抽屉的 clip-path / filter
-        // 变成「相对抽屉」的 fixed，导致位置往上跑。
+        // 弹层用 popover 进 top layer 时不移动 DOM（避免被当成「点了抽屉外面」而关掉抽屉），
+        // 但 fixed 的包含块可能是某个带 transform/filter 的祖先，所以用「实测 → 修正」自校准。
         try {
             const rect = inputEl.getBoundingClientRect();
             const margin = 8;
@@ -1296,49 +1296,64 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
             const viewportHeight = Math.round(vv?.height || window.innerHeight);
             const viewportOffsetTop = Math.round(vv?.offsetTop || 0);
 
-            let left = rect.left;
-            left = Math.min(Math.max(margin, left), Math.max(margin, window.innerWidth - width - margin));
-
             popupEl.style.position = 'fixed';
             popupEl.style.right = 'auto';
             popupEl.style.bottom = 'auto';
             popupEl.style.width = width + 'px';
             popupEl.style.maxWidth = 'none';
-            popupEl.style.left = left + 'px';
             popupEl.style.maxHeight = Math.round(viewportHeight * 0.5) + 'px';
 
-            // 输入框顶部/底部换算到 visualViewport 坐标
-            const anchorBottom = rect.bottom - viewportOffsetTop;
+            const desiredLeft = Math.min(Math.max(margin, rect.left), Math.max(margin, window.innerWidth - width - margin));
             const anchorTop = rect.top - viewportOffsetTop;
+            const anchorBottom = rect.bottom - viewportOffsetTop;
+            const alignTop = (height) => {
+                let top = anchorBottom + 6;
+                if (top + height > viewportHeight - margin) {
+                    const up = anchorTop - height - 6;
+                    top = up > margin ? up : viewportHeight - height - margin;
+                }
+                return Math.min(Math.max(margin, top), Math.max(margin, viewportHeight - height - margin));
+            };
 
+            // 先放一次量高度
+            popupEl.style.left = desiredLeft + 'px';
+            popupEl.style.top = (viewportOffsetTop + anchorBottom + 6) + 'px';
             const height = Math.min(popupEl.offsetHeight || 240, Math.round(viewportHeight * 0.5));
-            let top = anchorBottom + 6;
-            if (top + height > viewportHeight - margin) {
-                const up = anchorTop - height - 6;
-                top = up > margin ? up : viewportHeight - height - margin;
+            const targetTop = alignTop(height);
+
+            // 自校准：不管定位包含块偏移多少，都用实测 rect 差值逼近目标位置
+            for (let pass = 0; pass < 3; pass += 1) {
+                popupEl.style.left = desiredLeft + 'px';
+                popupEl.style.top = (viewportOffsetTop + targetTop) + 'px';
+                const box = popupEl.getBoundingClientRect();
+                if (!box || (!box.width && !box.height)) break;
+                const dx = desiredLeft - box.left;
+                const dy = (viewportOffsetTop + targetTop) - box.top;
+                if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) break;
+                popupEl.style.left = (desiredLeft + dx) + 'px';
+                popupEl.style.top = (viewportOffsetTop + targetTop + dy) + 'px';
             }
-            // 最后再钳一次，保证不飞出可视区
-            top = Math.min(Math.max(margin, top), Math.max(margin, viewportHeight - height - margin));
-            popupEl.style.top = Math.round(viewportOffsetTop + top) + 'px';
         } catch (error) {
             console.warn('[NyTW] positionPopup failed', error);
         }
     };
 
+    const canUsePopover = () => typeof popupEl.showPopover === 'function' && popupEl.hasAttribute('popover');
     const showPopup = () => {
         if (popupEl.classList.contains('is-open')) return;
-        if (!portaled) {
+        const usePopover = canUsePopover();
+        if (!usePopover && !portaled) {
+            // 老内核回退：挂到 body + 最大 z-index
             homeParent = popupEl.parentElement;
             document.body.appendChild(popupEl);
             popupEl.classList.add('is-portaled');
             portaled = true;
         }
-        // 进浏览器 top layer：和原生下拉一样盖在玻璃层/模态对话框上面；
-        // 老内核没有 Popover API 时自动回退到 z-index 方案。
+        // 进浏览器 top layer：和原生下拉一样盖在玻璃层/模态对话框上面。
+        // 注意：支持 popover 时保留在原 DOM 里，这样点击/滑动弹层不会被抽屉
+        // 的「点外面关闭」逻辑当成外部点击而把面板关掉。
         try {
-            if (typeof popupEl.showPopover === 'function' && popupEl.hasAttribute('popover')) {
-                popupEl.showPopover();
-            }
+            if (usePopover) popupEl.showPopover();
         } catch { /* ignore */ }
         const initialFilter = inputEl.readOnly ? '' : inputEl.value;
         renderContent(popupEl, initialFilter, (selectedValue, displayLabel) => {
