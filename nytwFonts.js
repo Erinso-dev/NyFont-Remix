@@ -1263,6 +1263,12 @@ function renderFontPopupList(popupEl, filterText, onSelect) {
 function setupPicker(inputEl, popupEl, renderContent, onSave) {
     if (!inputEl || !popupEl) return;
 
+    // 所有选择弹层（字体选择 / 语言范围选择）统一进 top layer：
+    // 避免被美化的玻璃层、模态抽屉压住。
+    try {
+        popupEl.setAttribute('popover', 'manual');
+    } catch { /* ignore */ }
+
     let homeParent = null;
     let portaled = false;
 
@@ -1422,10 +1428,7 @@ function setupFontPicker(inputEl, popupEl, onSave) {
         inputEl.setAttribute('inputmode', 'none');
         inputEl.setAttribute('autocomplete', 'off');
     } catch { /* ignore */ }
-    // 弹层用 manual popover 进 top layer，避免被美化的玻璃层/模态抽屉压住
-    try {
-        popupEl.setAttribute('popover', 'manual');
-    } catch { /* ignore */ }
+
 
     const updateStyle = () => {
         if (!inputEl) return;
