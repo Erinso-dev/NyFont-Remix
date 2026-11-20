@@ -1267,6 +1267,12 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
     let portaled = false;
 
     const hidePopup = () => {
+        // 先进/出 top layer，再处理 class 与父节点
+        try {
+            if (typeof popupEl.hidePopover === 'function' && popupEl.hasAttribute('popover')) {
+                popupEl.hidePopover();
+            }
+        } catch { /* ignore */ }
         popupEl.classList.remove('is-open');
         popupEl.classList.remove('is-portaled');
         delete popupEl.dataset.activeTag;
@@ -1327,6 +1333,13 @@ function setupPicker(inputEl, popupEl, renderContent, onSave) {
             popupEl.classList.add('is-portaled');
             portaled = true;
         }
+        // 进浏览器 top layer：和原生下拉一样盖在玻璃层/模态对话框上面；
+        // 老内核没有 Popover API 时自动回退到 z-index 方案。
+        try {
+            if (typeof popupEl.showPopover === 'function' && popupEl.hasAttribute('popover')) {
+                popupEl.showPopover();
+            }
+        } catch { /* ignore */ }
         const initialFilter = inputEl.readOnly ? '' : inputEl.value;
         renderContent(popupEl, initialFilter, (selectedValue, displayLabel) => {
             inputEl.value = displayLabel || selectedValue;
@@ -1393,6 +1406,10 @@ function setupFontPicker(inputEl, popupEl, onSave) {
         inputEl.readOnly = true;
         inputEl.setAttribute('inputmode', 'none');
         inputEl.setAttribute('autocomplete', 'off');
+    } catch { /* ignore */ }
+    // 弹层用 manual popover 进 top layer，避免被美化的玻璃层/模态抽屉压住
+    try {
+        popupEl.setAttribute('popover', 'manual');
     } catch { /* ignore */ }
 
     const updateStyle = () => {

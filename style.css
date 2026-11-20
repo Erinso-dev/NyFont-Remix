@@ -4003,3 +4003,21 @@
 .nytw-font-picker-popup.is-portaled {
     z-index: 2147483647;
 }
+
+/* 字体选择弹层：manual popover 进浏览器 top layer（盖在玻璃层/模态抽屉之上） */
+.nytw-font-picker-popup[popover] {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background: var(--SmartThemeBlurTintColor, #2a2a2a);
+    color: var(--SmartThemeBodyColor, inherit);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.nytw-font-picker-popup[popover]::backdrop {
+    background: transparent;
+}
