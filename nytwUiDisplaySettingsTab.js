@@ -831,6 +831,74 @@ export function initDisplaySettingsTab() {
         inputEl.placeholder = value || fallback;
     };
 
+    // 读取「继承」状态下的实际数值：步进器加减时以真实继承值为基数，
+    // 而不是写死的 16 / 1.6 / 0（那些会导致一按 + 就跳到不合适的位置）。
+    const measureChWidthFor = (probeEl) => {
+        if (!(probeEl instanceof HTMLElement)) return null;
+        try {
+            const style = getComputedStyle(probeEl);
+            const span = document.createElement('span');
+            span.textContent = '0000000000';
+            span.style.cssText = 'position:absolute;left:-99999px;top:0;visibility:hidden;white-space:nowrap;pointer-events:none;'
+                + `font-family:${style.fontFamily};font-size:${style.fontSize};letter-spacing:${style.letterSpacing};font-weight:${style.fontWeight};`;
+            (document.getElementById('chat') || document.body).appendChild(span);
+            const width = span.getBoundingClientRect().width / 10;
+            span.remove();
+            return width > 0 ? width : null;
+        } catch {
+            return null;
+        }
+    };
+
+    const readInheritedTypographyBases = (probeEl, { includeWidth = false } = {}) => {
+        const el = probeEl instanceof HTMLElement ? probeEl : null;
+        const metrics = readTypographyFromEl(el);
+        const bases = {
+            fontSizePx: metrics.fontSizePx,
+            letterSpacingEm: metrics.letterSpacingEm,
+            lineHeight: metrics.lineHeight,
+            paragraphSpacingEm: null,
+            textIndentEm: null,
+            contentWidthCh: null,
+        };
+        if (!el) return bases;
+        const paragraph = el.querySelector('p') || el;
+        if (paragraph instanceof HTMLElement) {
+            try {
+                const style = getComputedStyle(paragraph);
+                const fontSizePx = pxToNumber(style.fontSize) || metrics.fontSizePx;
+                const marginTop = pxToNumber(style.marginTop) || 0;
+                const marginBottom = pxToNumber(style.marginBottom) || 0;
+                const marginPx = Math.max(marginTop, marginBottom);
+                if (fontSizePx > 0 && marginPx > 0) bases.paragraphSpacingEm = marginPx / fontSizePx;
+                bases.textIndentEm = toLetterSpacingEm(style.textIndent, fontSizePx);
+            } catch { /* ignore */ }
+        }
+        if (includeWidth && el.clientWidth > 0) {
+            const ch = measureChWidthFor(el);
+            if (ch && ch > 0) bases.contentWidthCh = el.clientWidth / ch;
+        }
+        return bases;
+    };
+
+    const getStepperInheritedBase = (input) => {
+        const id = String(input?.id || '');
+        const isDialogue = /dialogue/.test(id);
+        const chatRoot = document.getElementById('chat');
+        const probe = isDialogue
+            ? (document.querySelector('#chat .mes_text .ny-dialogue, #chat .mes_text q') || document.querySelector('#chat .mes_text') || chatRoot)
+            : (document.querySelector('#chat .mes_text:not(.nytw-stream-buffer)') || document.querySelector('#chat .mes_text') || chatRoot);
+        const bases = readInheritedTypographyBases(probe, { includeWidth: /content_width/.test(id) });
+        if (/pad_(left|right)|reading_pad/.test(id)) return 0;
+        if (/paragraph_spacing/.test(id)) return bases.paragraphSpacingEm ?? 0;
+        if (/text_indent/.test(id)) return bases.textIndentEm ?? 0;
+        if (/content_width/.test(id)) return bases.contentWidthCh ?? 0;
+        if (/font_size/.test(id)) return bases.fontSizePx ?? 16;
+        if (/letter_spacing/.test(id)) return bases.letterSpacingEm ?? 0;
+        if (/line[_-]?height/.test(id)) return bases.lineHeight ?? 1.6;
+        return 0;
+    };
+
     const syncTypographyPlaceholders = () => {
         const chatRoot = document.getElementById('chat');
         const bodyProbe = document.querySelector('#chat .mes_text:not(.nytw-stream-buffer)')
@@ -867,6 +935,19 @@ export function initDisplaySettingsTab() {
         setPlaceholder(customLetterSpacingEl, custom.letterSpacingEm === null ? '' : formatNumber(custom.letterSpacingEm, 2), '继承');
         setPlaceholder(localeFontSizeEl, locale.fontSizePx === null ? '' : formatNumber(locale.fontSizePx, 2), '继承');
         setPlaceholder(localeLetterSpacingEl, locale.letterSpacingEm === null ? '' : formatNumber(locale.letterSpacingEm, 2), '继承');
+
+        // 段距 / 缩进 / 左右补偿：把「继承到的实际值」也显示出来，步进器会以它为基数
+        const bodyBases = readInheritedTypographyBases(bodyProbe);
+        const dialogueBases = readInheritedTypographyBases(dialogueProbe);
+        const formatBase = (value) => (value === null || value === undefined || !Number.isFinite(value) ? '' : formatNumber(value, 2));
+        setPlaceholder(overallParagraphSpacingEl, formatBase(bodyBases.paragraphSpacingEm), '继承');
+        setPlaceholder(overallTextIndentEl, formatBase(bodyBases.textIndentEm), '继承');
+        setPlaceholder(bodyParagraphSpacingEl, formatBase(bodyBases.paragraphSpacingEm), '继承');
+        setPlaceholder(bodyTextIndentEl, formatBase(bodyBases.textIndentEm), '继承');
+        setPlaceholder(dialogueParagraphSpacingEl, formatBase(dialogueBases.paragraphSpacingEm), '继承');
+        setPlaceholder(dialogueTextIndentEl, formatBase(dialogueBases.textIndentEm), '继承');
+        setPlaceholder(readingPadLeftEl, '0', '继承');
+        setPlaceholder(readingPadRightEl, '0', '继承');
     };
 
     // 排版设置改动时，除了重建「阅读样式」（.mes_text / 对话 / 包裹），
@@ -2571,11 +2652,10 @@ export function initDisplaySettingsTab() {
             
             if (isNaN(currentVal)) {
                 currentVal = Number.parseFloat(input.placeholder);
-                if (isNaN(currentVal)) {
-                    if (/line[_-]height/i.test(input.id)) currentVal = 1.6;
-                    else if (input.id.includes('spacing') || input.id.includes('indent')) currentVal = 0;
-                    else currentVal = 16;
-                }
+            }
+            if (isNaN(currentVal)) {
+                // 没填 = 继承：以当前实际继承到的数值为基数加减
+                currentVal = getStepperInheritedBase(input);
             }
 
             const getPrecision = (n) => (String(n).split('.')[1] || '').length;

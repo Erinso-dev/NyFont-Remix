@@ -535,7 +535,13 @@ function buildReadingStyleCss() {
     }
     pushReadingRule(css, ['#chat .mes_text'], padDeclarations);
     if (hasReadingStyleValue(values.readingContentWidth)) {
-        pushReadingRule(css, ['#chat .mes_text'], ['max-width:var(--nytw-content-width) !important;']);
+        // 同时覆盖美化可能写死的 width，否则只改 max-width 的话，
+        // 美化用 width/百分比限制时仍然突破不了。
+        pushReadingRule(css, ['#chat .mes_text'], [
+            'max-width:var(--nytw-content-width) !important;',
+            'width:auto !important;',
+            'box-sizing:border-box !important;',
+        ]);
     }
     if (padDeclarations.length) {
         pushReadingRule(css, ['#chat .mes_text:has(textarea)'], [
