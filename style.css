@@ -4045,3 +4045,83 @@ input.nytw-input.is-invalid {
     border-color: rgba(224, 91, 91, 0.85) !important;
     box-shadow: 0 0 0 1px rgba(224, 91, 91, 0.35) !important;
 }
+
+/* --- 字体设置页的细分卡片（与显示设置卡片统一） --- */
+.nytw-font-scope-card .nytw-card-content {
+    padding: 2px 4px 4px;
+    box-sizing: border-box;
+}
+
+.nytw-font-scope-card:not(.is-collapsed) .nytw-card-content {
+    max-height: none;
+    overflow: visible;
+}
+
+.nytw-font-scope-rows {
+    display: flex;
+    flex-direction: column;
+}
+
+.nytw-font-scope-rows .nytw-row--font-override {
+    padding: 8px 2px;
+    gap: 8px;
+}
+
+.nytw-font-scope-rows .nytw-label {
+    flex: 0 0 auto;
+    min-width: 84px;
+}
+
+.nytw-font-scope-rows .nytw-input-wrapper {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.nytw-font-scope-rows .nytw-input {
+    width: 100%;
+    min-width: 0;
+}
+
+.nytw-font-scope-rows .nytw-icon-button {
+    flex: 0 0 auto;
+}
+
+.nytw-font-scope-card .nytw-help--nested {
+    margin: 6px 2px 2px;
+}
+
+.nytw-custom-selector-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nytw-custom-selector-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid rgba(127, 127, 127, 0.18);
+    border-radius: 8px;
+}
+
+.nytw-custom-selector-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nytw-custom-selector-head .nytw-input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.nytw-custom-selector-row .nytw-input-wrapper {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.nytw-custom-selector-row .nytw-input {
+    width: 100%;
+    min-width: 0;
+}

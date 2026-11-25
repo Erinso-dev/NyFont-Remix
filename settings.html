@@ -53,7 +53,7 @@
                                 <input id="nytw_global_font"
                                     type="text"
                                     class="text_pole nytw-input nytw-font-input"
-                                    placeholder="（留空表示默认）"
+                                    placeholder="留空 = 继承"
                                     autocomplete="off" />
                                 <div class="nytw-font-picker-popup" id="nytw_global_font_popup"></div>
                             </div>
@@ -80,7 +80,7 @@
                                 <input id="nytw_body_font"
                                     type="text"
                                     class="text_pole nytw-input nytw-font-input"
-                                    placeholder="（留空表示默认）"
+                                    placeholder="留空 = 继承"
                        autocomplete="off" />
                                 <div class="nytw-font-picker-popup" id="nytw_body_font_popup"></div>
                             </div>
@@ -100,7 +100,7 @@
                                 <input id="nytw_dialogue_font"
                                     type="text"
                                     class="text_pole nytw-input nytw-font-input"
-                                    placeholder="（留空表示默认）"
+                                    placeholder="留空 = 继承"
                                     autocomplete="off" />
                                 <div class="nytw-font-picker-popup" id="nytw_dialogue_font_popup"></div>
                             </div>
@@ -115,45 +115,57 @@
 
                         </div>
 
-                        <!-- 细节字体 -->
-                        <div id="nytw_detail_fonts_toggle" class="flex-container alignItemsCenter nytw-row nytw-row--disclosure">
-                            <label class="nytw-disclosure-label">
-                                <i class="fa-solid fa-chevron-right nytw-disclosure-icon" aria-hidden="true"></i>
-                                细节字体（角色名 / 斜体 / 粗体 / 代码）
-                            </label>
-                        </div>
-                        <div id="nytw_detail_fonts_panel" class="nytw-collapsible" aria-hidden="true">
-                            <div id="nytw_detail_fonts_rows" class="nytw-font-overrides"></div>
-                            <div class="nytw-help nytw-help--nested">留空 = 继承正文/对话字体；包裹字符和多语言字体仍然优先。</div>
-                        </div>
-
-                        <!-- 界面细项字体 -->
-                        <div id="nytw_interface_fonts_toggle" class="flex-container alignItemsCenter nytw-row nytw-row--disclosure">
-                            <label class="nytw-disclosure-label">
-                                <i class="fa-solid fa-chevron-right nytw-disclosure-icon" aria-hidden="true"></i>
-                                界面细项字体（标题 / 按钮 / 列表 / 输入框）
-                            </label>
-                        </div>
-                        <div id="nytw_interface_fonts_panel" class="nytw-collapsible" aria-hidden="true">
-                            <div id="nytw_interface_fonts_rows" class="nytw-font-overrides"></div>
-                            <div class="nytw-help nytw-help--nested">只影响酒馆界面文字；留空则跟随全局字体/主题。</div>
-                        </div>
-
-                        <!-- 自定义选择器字体 -->
-                        <div id="nytw_custom_selectors_toggle" class="flex-container alignItemsCenter nytw-row nytw-row--disclosure">
-                            <label class="nytw-disclosure-label">
-                                <i class="fa-solid fa-chevron-right nytw-disclosure-icon" aria-hidden="true"></i>
-                                自定义选择器字体
-                            </label>
-                        </div>
-                        <div id="nytw_custom_selectors_panel" class="nytw-collapsible" aria-hidden="true">
-                            <div id="nytw_custom_selector_rows" class="nytw-custom-rules"></div>
-                            <div class="nytw-row nytw-row--nested nytw-add-locale-row">
-                                <button id="nytw_add_custom_selector" class="nytw-dashed-btn" type="button">
-                                    <i class="fa-solid fa-plus"></i> 添加选择器
-                                </button>
+                        <!-- 细节字体卡片 -->
+                        <div class="nytw-display-setting-card nytw-font-scope-card is-collapsed" id="nytw_card_detail_fonts">
+                            <div class="nytw-card-header nytw-card-toggle">
+                                <div class="nytw-card-icon"><i class="fa-solid fa-font"></i></div>
+                                <div class="nytw-card-info">
+                                    <div class="nytw-card-title">细节字体</div>
+                                    <div class="nytw-card-desc">角色名、斜体、粗体、代码</div>
+                                </div>
+                                <div class="nytw-card-chevron"><i class="fa-solid fa-chevron-down"></i></div>
                             </div>
-                            <div class="nytw-help nytw-help--nested">填 CSS 选择器（例如 <code>q</code>、<code>blockquote</code>、<code>#chat .mes_text blockquote</code>），选择器非法或为空会自动跳过。优先级高于其它细项，低于包裹字符。</div>
+                            <div class="nytw-card-content">
+                                <div id="nytw_detail_fonts_rows" class="nytw-font-scope-rows"></div>
+                                <div class="nytw-help nytw-help--nested">留空 = 继承正文/对话字体；包裹字符和多语言字体仍然优先。</div>
+                            </div>
+                        </div>
+
+                        <!-- 界面细项字体卡片 -->
+                        <div class="nytw-display-setting-card nytw-font-scope-card is-collapsed" id="nytw_card_interface_fonts">
+                            <div class="nytw-card-header nytw-card-toggle">
+                                <div class="nytw-card-icon"><i class="fa-solid fa-heading"></i></div>
+                                <div class="nytw-card-info">
+                                    <div class="nytw-card-title">界面细项字体</div>
+                                    <div class="nytw-card-desc">标题 / 顶栏、按钮 / 列表 / 输入框</div>
+                                </div>
+                                <div class="nytw-card-chevron"><i class="fa-solid fa-chevron-down"></i></div>
+                            </div>
+                            <div class="nytw-card-content">
+                                <div id="nytw_interface_fonts_rows" class="nytw-font-scope-rows"></div>
+                                <div class="nytw-help nytw-help--nested">只影响酒馆界面文字；留空则跟随全局字体/主题。</div>
+                            </div>
+                        </div>
+
+                        <!-- 自定义选择器字体卡片 -->
+                        <div class="nytw-display-setting-card nytw-font-scope-card is-collapsed" id="nytw_card_custom_selectors">
+                            <div class="nytw-card-header nytw-card-toggle">
+                                <div class="nytw-card-icon"><i class="fa-solid fa-crosshairs"></i></div>
+                                <div class="nytw-card-info">
+                                    <div class="nytw-card-title">自定义选择器字体</div>
+                                    <div class="nytw-card-desc">给任意 CSS 选择器单独指定字体</div>
+                                </div>
+                                <div class="nytw-card-chevron"><i class="fa-solid fa-chevron-down"></i></div>
+                            </div>
+                            <div class="nytw-card-content">
+                                <div id="nytw_custom_selector_rows" class="nytw-custom-selector-list"></div>
+                                <div class="nytw-row nytw-row--nested nytw-add-locale-row">
+                                    <button id="nytw_add_custom_selector" class="nytw-dashed-btn" type="button">
+                                        <i class="fa-solid fa-plus"></i> 添加选择器
+                                    </button>
+                                </div>
+                                <div class="nytw-help nytw-help--nested">填 CSS 选择器（例如 <code>q</code>、<code>blockquote</code>、<code>#chat .mes_text blockquote</code>），非法或为空会自动跳过。优先级高于其它细项，低于包裹字符。</div>
+                            </div>
                         </div>
 
                         <!-- 按语言设置字体 (折叠面板) -->
@@ -575,7 +587,7 @@
                                         </div>
                                         <div class="nytw-stepper nytw-stepper--line-height">
                                             <button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button>
-                                            <input id="nytw_line_height" type="number" class="text_pole nytw-typo-input" placeholder="默认" min="0.8" max="3" step="0.05" />
+                                            <input id="nytw_line_height" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="0.8" max="3" step="0.05" />
                                             <button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button>
                                         </div>
                                     </div>
@@ -591,12 +603,12 @@
                                         </div>
                                         <div class="nytw-stepper">
                                             <button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button>
-                                            <input id="nytw_body_font_size" type="number" class="text_pole nytw-typo-input" placeholder="默认" min="6" max="72" step="0.5" />
+                                            <input id="nytw_body_font_size" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="6" max="72" step="0.5" />
                                             <button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button>
                                         </div>
                                         <div class="nytw-stepper">
                                             <button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button>
-                                            <input id="nytw_body_letter_spacing" type="number" class="text_pole nytw-typo-input" placeholder="默认" min="-0.2" max="0.5" step="0.01" />
+                                            <input id="nytw_body_letter_spacing" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="-0.2" max="0.5" step="0.01" />
                                             <button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button>
                                         </div>
                                     </div>
@@ -607,12 +619,12 @@
                                         </div>
                                         <div class="nytw-stepper">
                                             <button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button>
-                                            <input id="nytw_dialogue_font_size" type="number" class="text_pole nytw-typo-input" placeholder="默认" min="6" max="72" step="0.5" />
+                                            <input id="nytw_dialogue_font_size" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="6" max="72" step="0.5" />
                                             <button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button>
                                         </div>
                                         <div class="nytw-stepper">
                                             <button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button>
-                                            <input id="nytw_dialogue_letter_spacing" type="number" class="text_pole nytw-typo-input" placeholder="默认" min="-0.2" max="0.5" step="0.01" />
+                                            <input id="nytw_dialogue_letter_spacing" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="-0.2" max="0.5" step="0.01" />
                                             <button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button>
                                         </div>
                                     </div>
@@ -623,12 +635,12 @@
                                         </div>
                                         <div class="nytw-stepper">
                                             <button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button>
-                                            <input id="nytw_custom_font_size" type="number" class="text_pole nytw-typo-input" placeholder="默认" min="6" max="72" step="0.5" />
+                                            <input id="nytw_custom_font_size" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="6" max="72" step="0.5" />
                                             <button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button>
                                         </div>
                                         <div class="nytw-stepper">
                                             <button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button>
-                                            <input id="nytw_custom_letter_spacing" type="number" class="text_pole nytw-typo-input" placeholder="默认" min="-0.2" max="0.5" step="0.01" />
+                                            <input id="nytw_custom_letter_spacing" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="-0.2" max="0.5" step="0.01" />
                                             <button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button>
                                         </div>
                                     </div>
@@ -639,12 +651,12 @@
                                         </div>
                                         <div class="nytw-stepper">
                                             <button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button>
-                                            <input id="nytw_locale_font_size" type="number" class="text_pole nytw-typo-input" placeholder="默认" min="6" max="72" step="0.5" />
+                                            <input id="nytw_locale_font_size" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="6" max="72" step="0.5" />
                                             <button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button>
                                         </div>
                                         <div class="nytw-stepper">
                                             <button type="button" class="nytw-stepper-btn minus" tabindex="-1"><i class="fa-solid fa-minus"></i></button>
-                                            <input id="nytw_locale_letter_spacing" type="number" class="text_pole nytw-typo-input" placeholder="默认" min="-0.2" max="0.5" step="0.01" />
+                                            <input id="nytw_locale_letter_spacing" type="number" class="text_pole nytw-typo-input" placeholder="继承" min="-0.2" max="0.5" step="0.01" />
                                             <button type="button" class="nytw-stepper-btn plus" tabindex="-1"><i class="fa-solid fa-plus"></i></button>
                                         </div>
                                     </div>

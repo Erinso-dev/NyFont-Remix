@@ -125,7 +125,7 @@ function renderCustomFontRules(containerEl) {
         const fontInput = document.createElement('input');
         fontInput.type = 'text';
         fontInput.className = 'text_pole nytw-input nytw-font-input';
-        fontInput.placeholder = '（留空表示默认）';
+        fontInput.placeholder = '留空 = 继承';
         fontInput.autocomplete = 'off';
         fontInput.value = rule.font || '';
 
@@ -295,7 +295,7 @@ export function initFontSettingsTab() {
         scheduleNyFontSave();
         queueApplyFonts();
         scheduleScan();
-    }, 200);
+    }, 80);
 
     const debouncedSaveAndScan = debounce(() => {
         scheduleNyFontSave();
@@ -383,7 +383,7 @@ export function initFontSettingsTab() {
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'text_pole nytw-input nytw-font-input';
-            input.placeholder = '（留空表示继承）';
+            input.placeholder = '留空 = 继承';
             input.autocomplete = 'off';
             const popup = document.createElement('div');
             popup.className = 'nytw-font-picker-popup';
@@ -419,24 +419,19 @@ export function initFontSettingsTab() {
     renderFontScopeRows(document.getElementById('nytw_detail_fonts_rows'), detailScopeFields);
     renderFontScopeRows(document.getElementById('nytw_interface_fonts_rows'), interfaceScopeFields);
 
-    const setupSimpleDisclosure = (toggleId, panelId) => {
-        const toggle = document.getElementById(toggleId);
-        const panel = document.getElementById(panelId);
-        if (!toggle || !panel) return;
-        const setOpen = (open) => {
-            panel.classList.toggle('is-open', open);
-            panel.setAttribute('aria-hidden', open ? 'false' : 'true');
-            toggle.classList.toggle('is-open', open);
-        };
-        setOpen(false);
-        toggle.addEventListener('click', (event) => {
-            if (event.target instanceof Element && event.target.closest('button')) return;
-            setOpen(!panel.classList.contains('is-open'));
+    // 细节字体 / 界面细项 / 自定义选择器都用「卡片」折叠，和显示设置页一致
+    const bindFontScopeCards = () => {
+        document.querySelectorAll('#nytw_tab_settings .nytw-card-toggle').forEach((toggle) => {
+            if (toggle.dataset.nytwCardToggleBound === '1') return;
+            toggle.dataset.nytwCardToggleBound = '1';
+            toggle.addEventListener('click', () => {
+                const card = toggle.closest('.nytw-display-setting-card');
+                if (!card) return;
+                card.classList.toggle('is-collapsed');
+            });
         });
     };
-    setupSimpleDisclosure('nytw_detail_fonts_toggle', 'nytw_detail_fonts_panel');
-    setupSimpleDisclosure('nytw_interface_fonts_toggle', 'nytw_interface_fonts_panel');
-    setupSimpleDisclosure('nytw_custom_selectors_toggle', 'nytw_custom_selectors_panel');
+    bindFontScopeCards();
 
     const customSelectorRows = document.getElementById('nytw_custom_selector_rows');
     const addCustomSelectorBtn = document.getElementById('nytw_add_custom_selector');
@@ -458,24 +453,30 @@ export function initFontSettingsTab() {
 
         settings.customFontSelectors.forEach((entry, index) => {
             const row = document.createElement('div');
-            row.className = 'flex-container alignItemsCenter nytw-row nytw-row--font-override';
+            row.className = 'nytw-custom-selector-row';
 
-            const selectorWrap = document.createElement('div');
-            selectorWrap.className = 'nytw-input-wrapper';
+            const head = document.createElement('div');
+            head.className = 'nytw-custom-selector-head';
             const selectorInput = document.createElement('input');
             selectorInput.type = 'text';
             selectorInput.className = 'text_pole nytw-input';
             selectorInput.placeholder = 'CSS 选择器，如 q';
             selectorInput.value = String(entry.selector || '');
-            selectorInput.style.minWidth = '110px';
-            selectorWrap.appendChild(selectorInput);
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'menu_button nytw-icon-button';
+            removeBtn.title = '删除';
+            removeBtn.setAttribute('aria-label', '删除');
+            removeBtn.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
+            head.appendChild(selectorInput);
+            head.appendChild(removeBtn);
 
             const fontWrap = document.createElement('div');
             fontWrap.className = 'nytw-input-wrapper';
             const fontInput = document.createElement('input');
             fontInput.type = 'text';
             fontInput.className = 'text_pole nytw-input nytw-font-input';
-            fontInput.placeholder = '（字体，留空跳过）';
+            fontInput.placeholder = '留空 = 继承';
             fontInput.autocomplete = 'off';
             fontInput.value = String(entry.font || '');
             const fontPopup = document.createElement('div');
@@ -483,16 +484,8 @@ export function initFontSettingsTab() {
             fontWrap.appendChild(fontInput);
             fontWrap.appendChild(fontPopup);
 
-            const removeBtn = document.createElement('button');
-            removeBtn.type = 'button';
-            removeBtn.className = 'menu_button nytw-icon-button';
-            removeBtn.title = '删除';
-            removeBtn.setAttribute('aria-label', '删除');
-            removeBtn.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
-
-            row.appendChild(selectorWrap);
+            row.appendChild(head);
             row.appendChild(fontWrap);
-            row.appendChild(removeBtn);
             customSelectorRows.appendChild(row);
 
             selectorInput.classList.toggle('is-invalid', !isSelectorValid(selectorInput.value));

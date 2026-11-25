@@ -883,7 +883,7 @@ async function resolveValidatedFontCss(rawValue, fieldLabel) {
     };
 }
 
-async function buildValidatedLocaleFontMap() {
+function buildValidatedLocaleFontMap() {
     const map = new Map();
     if (!settings.fontsEnabled) return map;
     if (!settings.localeFontEnabled) return map;
@@ -897,7 +897,7 @@ async function buildValidatedLocaleFontMap() {
         if (!rawFontValue) continue;
 
         const label = `多语言字体（${UNICODE_RANGES[key]?.label || key}）`;
-        const resolved = await resolveValidatedFontCss(rawFontValue, label);
+        const resolved = resolveFontCssForApply(rawFontValue, label);
         if (!resolved.css) continue;
 
         map.set(key, resolved.css);
@@ -1054,16 +1054,54 @@ function importedFontsSignature() {
     }
 }
 
-async function resolveFontCssCached(raw, label) {
-    const key = `${label}::${String(raw || '')}`;
-    if (resolvedFontCssCache.has(key)) return resolvedFontCssCache.get(key);
-    const resolved = await resolveValidatedFontCss(raw, label);
-    if (!resolved || !resolved.ok) {
-        // 结果不稳定（字体还没加载完等），不缓存失败结果，下次重试
-        return resolved;
+const fontResolutionPromises = new Map();
+const FONT_RESOLUTION_FAILURE_TTL = 20000;
+
+/**
+ * 字体解析「乐观应用」：先返回原始字体名让 CSS 立刻生效，
+ * 真正的校验（加载 webfont / 本地字体 / 回退检测）在后台跑，
+ * 校验完再自动重应用一次。这样换字体时不用等网络/字体加载。
+ */
+function resolveFontCssForApply(raw, label) {
+    const rawText = String(raw || '').trim();
+    if (!rawText) return { ok: true, css: '', families: [] };
+
+    const key = `${label}::${rawText}`;
+    const cached = resolvedFontCssCache.get(key);
+    if (cached) {
+        const expiredFailure = !cached.ok && cached.failedUntil && Date.now() >= cached.failedUntil;
+        if (!expiredFailure) return cached;
+        resolvedFontCssCache.delete(key);
     }
-    resolvedFontCssCache.set(key, resolved);
-    return resolved;
+
+    if (!fontResolutionPromises.has(key)) {
+        const task = resolveValidatedFontCss(rawText, label)
+            .then((resolved) => {
+                const value = (resolved && typeof resolved === 'object')
+                    ? resolved
+                    : { ok: false, css: '', families: [] };
+                if (!value.ok) value.failedUntil = Date.now() + FONT_RESOLUTION_FAILURE_TTL;
+                resolvedFontCssCache.set(key, value);
+                fontResolutionPromises.delete(key);
+                // 校验完成后重新应用，确保用的是校验后的字体
+                queueApplyFonts();
+                return value;
+            })
+            .catch((error) => {
+                fontResolutionPromises.delete(key);
+                console.warn('[NyTW] Font resolve failed', label, error);
+            });
+        fontResolutionPromises.set(key, task);
+    }
+
+    // 乐观值：直接把原始字体名安全地当作 font-family 用
+    const optimisticCss = toCssFontFamilyValue(rawText) || '';
+    return {
+        ok: true,
+        css: optimisticCss,
+        families: optimisticCss ? parseFontFamilyList(optimisticCss) : [],
+        optimistic: true,
+    };
 }
 
 async function applyFontSettings() {
@@ -1088,10 +1126,10 @@ async function applyFontSettings() {
 
     invalidConfiguredFontFamilies.clear();
 
-    const resolvedGlobal = await resolveFontCssCached(settings.globalFont, '全局字体');
-    const resolvedBody = await resolveFontCssCached(settings.bodyFont, '正文字体');
-    const resolvedDialogue = await resolveFontCssCached(settings.dialogueFont, '对话字体');
-    const resolvedCustom = await resolveFontCssCached(settings.customFont, '自定义包裹字体');
+    const resolvedGlobal = resolveFontCssForApply(settings.globalFont, '全局字体');
+    const resolvedBody = resolveFontCssForApply(settings.bodyFont, '正文字体');
+    const resolvedDialogue = resolveFontCssForApply(settings.dialogueFont, '对话字体');
+    const resolvedCustom = resolveFontCssForApply(settings.customFont, '自定义包裹字体');
     const resolvedCustomRules = [];
     for (const rule of (Array.isArray(settings.customFontRules) ? settings.customFontRules : [])) {
         const open = String(rule?.open || '').trim();
@@ -1102,11 +1140,11 @@ async function applyFontSettings() {
             resolvedCustomRules.push({ open, close, fontCss: '', families: [] });
             continue;
         }
-        const resolved = await resolveFontCssCached(rawFont, '包裹字符字体');
+        const resolved = resolveFontCssForApply(rawFont, '包裹字符字体');
         resolvedCustomRules.push({ open, close, fontCss: resolved.css, families: resolved.families });
     }
     activeCustomRules = resolvedCustomRules.map((r) => ({ open: r.open, close: r.close, fontCss: r.fontCss }));
-    const localeFontMap = await buildValidatedLocaleFontMap();
+    const localeFontMap = buildValidatedLocaleFontMap();
 
     const globalFontCss = resolvedGlobal.css;
     const bodyFontCss = resolvedBody.css;
@@ -1125,7 +1163,7 @@ async function applyFontSettings() {
     for (const def of [...DETAIL_FONT_SCOPES, ...INTERFACE_FONT_SCOPES]) {
         const rawFont = String(settings.fontScopes?.[def.key] || '').trim();
         if (!rawFont) continue;
-        const resolved = await resolveFontCssCached(rawFont, '细分字体');
+        const resolved = resolveFontCssForApply(rawFont, '细分字体');
         if (resolved?.css) {
             detailScopeFontCss[def.key] = resolved.css;
             detailFontFamilies.push(...(resolved.families || []));
@@ -1136,7 +1174,7 @@ async function applyFontSettings() {
         const selector = String(entry?.selector || '').trim();
         const rawFont = String(entry?.font || '').trim();
         if (!selector || !rawFont) continue;
-        const resolved = await resolveFontCssCached(rawFont, '自定义选择器');
+        const resolved = resolveFontCssForApply(rawFont, '自定义选择器');
         if (resolved?.css) {
             customSelectorFonts.push({ selector, font: resolved.css });
             detailFontFamilies.push(...(resolved.families || []));
@@ -1155,17 +1193,17 @@ async function applyFontSettings() {
 
     const externalCssUrls = collectExternalFontCssUrlsForFamilies(families);
     syncExternalFontStylesheets(externalCssUrls);
-    try {
-        await ensureExternalFontStylesheetsReady(externalCssUrls);
-    } catch (error) {
+    // 不阻塞：字体 CSS 链接异步加载，加载好后浏览器自动使用
+    ensureExternalFontStylesheetsReady(externalCssUrls).catch((error) => {
         console.warn('[NyTW] Failed while waiting external font stylesheets', error);
-    }
+    });
 
     let css = '/* NyTW Fonts (generated) */\n';
-    try {
-        css += await buildFontFaceCssForFamilies(families);
-    } catch (error) {
-        console.error('[NyTW] Failed to prepare imported file fonts', error);
+    // 本地字体面注入放到后台，避免换字体时等字体文件读取
+    if (families.length) {
+        buildFontFaceCssForFamilies(families).catch((error) => {
+            console.error('[NyTW] Failed to prepare imported file fonts', error);
+        });
     }
 
     if (globalFontCss) {
