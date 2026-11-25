@@ -1,7 +1,7 @@
 import { queueApplyFonts, scheduleScan } from './nytwCore.js';
 import { importer_scheduleScan } from './nytwChatFontImporter.js';
 import { normalizeGlobalFontScope, settings } from './nytwState.js';
-import { debounce, scheduleNyFontSave } from './nytwUtils.js';
+import { debounce, notify, scheduleNyFontSave } from './nytwUtils.js';
 import { getFontFamilyDisplayLabel, toCssFontFamilyValue, setupFontPicker, setupLocalePicker } from './nytwFonts.js';
 import { UNICODE_RANGES } from './nytwLocaleData.js';
 
@@ -351,6 +351,193 @@ export function initFontSettingsTab() {
             debouncedSaveAndApply();
         });
     }
+
+    /* ---------------- 细分子字体 / 界面细项 / 自定义选择器 ---------------- */
+    const makeCustomSelectorId = () => `cs_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    const detailScopeFields = [
+        { key: 'nameText', label: '角色名' },
+        { key: 'italic', label: '斜体' },
+        { key: 'strong', label: '粗体' },
+        { key: 'codeInline', label: '行内代码' },
+        { key: 'codeBlock', label: '代码块' },
+    ];
+    const interfaceScopeFields = [
+        { key: 'heading', label: '标题 / 顶栏' },
+        { key: 'uiButtons', label: '按钮 / 列表 / 输入框' },
+    ];
+
+    const renderFontScopeRows = (container, fields) => {
+        if (!(container instanceof HTMLElement)) return;
+        container.innerHTML = '';
+        if (!settings.fontScopes || typeof settings.fontScopes !== 'object') settings.fontScopes = {};
+        for (const field of fields) {
+            const row = document.createElement('div');
+            row.className = 'flex-container alignItemsCenter nytw-row nytw-row--font-override';
+
+            const label = document.createElement('label');
+            label.className = 'nytw-label';
+            label.textContent = field.label;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'nytw-input-wrapper';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'text_pole nytw-input nytw-font-input';
+            input.placeholder = '（留空表示继承）';
+            input.autocomplete = 'off';
+            const popup = document.createElement('div');
+            popup.className = 'nytw-font-picker-popup';
+            wrapper.appendChild(input);
+            wrapper.appendChild(popup);
+
+            const clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.className = 'menu_button nytw-icon-button';
+            clearBtn.title = '清除';
+            clearBtn.setAttribute('aria-label', '清除');
+            clearBtn.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
+
+            row.appendChild(label);
+            row.appendChild(wrapper);
+            row.appendChild(clearBtn);
+            container.appendChild(row);
+
+            input.value = String(settings.fontScopes[field.key] || '');
+            setupFontPicker(input, popup, (val) => {
+                settings.fontScopes[field.key] = val;
+                debouncedSaveAndApply();
+            });
+            clearBtn.addEventListener('click', () => {
+                settings.fontScopes[field.key] = '';
+                input.value = '';
+                scheduleNyFontSave();
+                queueApplyFonts();
+            });
+        }
+    };
+
+    renderFontScopeRows(document.getElementById('nytw_detail_fonts_rows'), detailScopeFields);
+    renderFontScopeRows(document.getElementById('nytw_interface_fonts_rows'), interfaceScopeFields);
+
+    const setupSimpleDisclosure = (toggleId, panelId) => {
+        const toggle = document.getElementById(toggleId);
+        const panel = document.getElementById(panelId);
+        if (!toggle || !panel) return;
+        const setOpen = (open) => {
+            panel.classList.toggle('is-open', open);
+            panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+            toggle.classList.toggle('is-open', open);
+        };
+        setOpen(false);
+        toggle.addEventListener('click', (event) => {
+            if (event.target instanceof Element && event.target.closest('button')) return;
+            setOpen(!panel.classList.contains('is-open'));
+        });
+    };
+    setupSimpleDisclosure('nytw_detail_fonts_toggle', 'nytw_detail_fonts_panel');
+    setupSimpleDisclosure('nytw_interface_fonts_toggle', 'nytw_interface_fonts_panel');
+    setupSimpleDisclosure('nytw_custom_selectors_toggle', 'nytw_custom_selectors_panel');
+
+    const customSelectorRows = document.getElementById('nytw_custom_selector_rows');
+    const addCustomSelectorBtn = document.getElementById('nytw_add_custom_selector');
+    const isSelectorValid = (selector) => {
+        const raw = String(selector || '').trim();
+        if (!raw) return true;
+        try {
+            document.querySelector(raw);
+            return true;
+        } catch {
+            return false;
+        }
+    };
+
+    const renderCustomSelectorRows = () => {
+        if (!(customSelectorRows instanceof HTMLElement)) return;
+        customSelectorRows.innerHTML = '';
+        if (!Array.isArray(settings.customFontSelectors)) settings.customFontSelectors = [];
+
+        settings.customFontSelectors.forEach((entry, index) => {
+            const row = document.createElement('div');
+            row.className = 'flex-container alignItemsCenter nytw-row nytw-row--font-override';
+
+            const selectorWrap = document.createElement('div');
+            selectorWrap.className = 'nytw-input-wrapper';
+            const selectorInput = document.createElement('input');
+            selectorInput.type = 'text';
+            selectorInput.className = 'text_pole nytw-input';
+            selectorInput.placeholder = 'CSS 选择器，如 q';
+            selectorInput.value = String(entry.selector || '');
+            selectorInput.style.minWidth = '110px';
+            selectorWrap.appendChild(selectorInput);
+
+            const fontWrap = document.createElement('div');
+            fontWrap.className = 'nytw-input-wrapper';
+            const fontInput = document.createElement('input');
+            fontInput.type = 'text';
+            fontInput.className = 'text_pole nytw-input nytw-font-input';
+            fontInput.placeholder = '（字体，留空跳过）';
+            fontInput.autocomplete = 'off';
+            fontInput.value = String(entry.font || '');
+            const fontPopup = document.createElement('div');
+            fontPopup.className = 'nytw-font-picker-popup';
+            fontWrap.appendChild(fontInput);
+            fontWrap.appendChild(fontPopup);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'menu_button nytw-icon-button';
+            removeBtn.title = '删除';
+            removeBtn.setAttribute('aria-label', '删除');
+            removeBtn.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
+
+            row.appendChild(selectorWrap);
+            row.appendChild(fontWrap);
+            row.appendChild(removeBtn);
+            customSelectorRows.appendChild(row);
+
+            selectorInput.classList.toggle('is-invalid', !isSelectorValid(selectorInput.value));
+            const commitSelector = () => {
+                const value = selectorInput.value.trim().slice(0, 240);
+                selectorInput.classList.toggle('is-invalid', !isSelectorValid(value));
+                settings.customFontSelectors[index].selector = value;
+                debouncedSaveAndApply();
+            };
+            selectorInput.addEventListener('change', commitSelector);
+            selectorInput.addEventListener('input', commitSelector);
+
+            setupFontPicker(fontInput, fontPopup, (val) => {
+                settings.customFontSelectors[index].font = val;
+                debouncedSaveAndApply();
+            });
+
+            removeBtn.addEventListener('click', () => {
+                settings.customFontSelectors.splice(index, 1);
+                renderCustomSelectorRows();
+                scheduleNyFontSave();
+                queueApplyFonts();
+            });
+        });
+
+        if (!settings.customFontSelectors.length) {
+            const empty = document.createElement('div');
+            empty.className = 'nytw-help nytw-help--nested';
+            empty.textContent = '还没有自定义选择器。';
+            customSelectorRows.appendChild(empty);
+        }
+    };
+    renderCustomSelectorRows();
+
+    addCustomSelectorBtn?.addEventListener('click', () => {
+        if (!Array.isArray(settings.customFontSelectors)) settings.customFontSelectors = [];
+        if (settings.customFontSelectors.length >= 12) {
+            notify('warning', '最多 12 条自定义选择器。');
+            return;
+        }
+        settings.customFontSelectors.push({ id: makeCustomSelectorId(), selector: '', font: '' });
+        renderCustomSelectorRows();
+        scheduleNyFontSave();
+        queueApplyFonts();
+    });
 
     // 包裹规则列表
     const customRulesContainer = document.getElementById('nytw_custom_rules');

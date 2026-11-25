@@ -1389,17 +1389,22 @@ export function initDisplaySettingsTab() {
         const bodyFontSize = firstResolved(settings.bodyFontSize, settings.overallFontSize);
         const bodyLetterSpacing = firstResolved(settings.bodyLetterSpacing, settings.overallLetterSpacing);
         const bodyLineHeight = firstResolved(settings.lineHeight, settings.overallLineHeight);
-        const bodyColor = firstResolved(settings.bodyTextColor, settings.overallTextColor);
+        const bodyColorSetting = firstResolved(settings.bodyTextColor, settings.overallTextColor);
+        // 设置留空时不写内联色，而是取「继承的实际颜色」（和占位符「继承 / #xxx」一致），
+        // 这样预览能反映出对话/斜体继承到的主题颜色。
+        const bodyColor = bodyColorSetting || getReadingColorFallback('bodyTextColor');
         const bodyParagraphSpacing = firstResolved(settings.bodyParagraphSpacing, settings.overallParagraphSpacing);
         const bodyTextIndent = firstResolved(settings.bodyTextIndent, settings.overallTextIndent);
         const bodyFontWeight = firstResolved(settings.bodyFontWeight, settings.overallFontWeight);
         const bodyFontStyle = firstResolved(settings.bodyFontStyle, settings.overallFontStyle);
-        const italicColor = firstResolved(settings.italicTextColor, bodyColor);
+        const italicColorSetting = firstResolved(settings.italicTextColor, bodyColorSetting);
+        const italicColor = italicColorSetting || getReadingColorFallback('italicTextColor');
 
         const dialogueFontSize = firstResolved(settings.dialogueFontSize, bodyFontSize);
         const dialogueLetterSpacing = firstResolved(settings.dialogueLetterSpacing, bodyLetterSpacing);
         const dialogueLineHeight = firstResolved(settings.dialogueLineHeight, bodyLineHeight);
-        const dialogueColor = firstResolved(settings.dialogueTextColor, bodyColor);
+        const dialogueColorSetting = firstResolved(settings.dialogueTextColor, bodyColorSetting);
+        const dialogueColor = dialogueColorSetting || getReadingColorFallback('dialogueTextColor');
         const dialogueParagraphSpacing = firstResolved(settings.dialogueParagraphSpacing, bodyParagraphSpacing);
         const dialogueTextIndent = firstResolved(settings.dialogueTextIndent, bodyTextIndent);
         const dialogueFontWeight = firstResolved(settings.dialogueFontWeight, bodyFontWeight);

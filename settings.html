@@ -69,8 +69,7 @@
                             <div class="flex-container alignItemsCenter nytw-row nytw-row--font-override">
                                 <label for="nytw_global_font_scope" class="nytw-label">应用范围</label>
                                 <select id="nytw_global_font_scope" class="nytw-mini-select" title="全局字体作用范围">
-                                    <option value="body">只作用正文</option>
-                                    <option value="ui">正文 + 界面（推荐）</option>
+                                    <option value="interface">只作用于界面（推荐）</option>
                                     <option value="all">全部文字（含自定义界面）</option>
                                 </select>
                             </div>
@@ -114,6 +113,47 @@
                             </button>
                         </div>
 
+                        </div>
+
+                        <!-- 细节字体 -->
+                        <div id="nytw_detail_fonts_toggle" class="flex-container alignItemsCenter nytw-row nytw-row--disclosure">
+                            <label class="nytw-disclosure-label">
+                                <i class="fa-solid fa-chevron-right nytw-disclosure-icon" aria-hidden="true"></i>
+                                细节字体（角色名 / 斜体 / 粗体 / 代码）
+                            </label>
+                        </div>
+                        <div id="nytw_detail_fonts_panel" class="nytw-collapsible" aria-hidden="true">
+                            <div id="nytw_detail_fonts_rows" class="nytw-font-overrides"></div>
+                            <div class="nytw-help nytw-help--nested">留空 = 继承正文/对话字体；包裹字符和多语言字体仍然优先。</div>
+                        </div>
+
+                        <!-- 界面细项字体 -->
+                        <div id="nytw_interface_fonts_toggle" class="flex-container alignItemsCenter nytw-row nytw-row--disclosure">
+                            <label class="nytw-disclosure-label">
+                                <i class="fa-solid fa-chevron-right nytw-disclosure-icon" aria-hidden="true"></i>
+                                界面细项字体（标题 / 按钮 / 列表 / 输入框）
+                            </label>
+                        </div>
+                        <div id="nytw_interface_fonts_panel" class="nytw-collapsible" aria-hidden="true">
+                            <div id="nytw_interface_fonts_rows" class="nytw-font-overrides"></div>
+                            <div class="nytw-help nytw-help--nested">只影响酒馆界面文字；留空则跟随全局字体/主题。</div>
+                        </div>
+
+                        <!-- 自定义选择器字体 -->
+                        <div id="nytw_custom_selectors_toggle" class="flex-container alignItemsCenter nytw-row nytw-row--disclosure">
+                            <label class="nytw-disclosure-label">
+                                <i class="fa-solid fa-chevron-right nytw-disclosure-icon" aria-hidden="true"></i>
+                                自定义选择器字体
+                            </label>
+                        </div>
+                        <div id="nytw_custom_selectors_panel" class="nytw-collapsible" aria-hidden="true">
+                            <div id="nytw_custom_selector_rows" class="nytw-custom-rules"></div>
+                            <div class="nytw-row nytw-row--nested nytw-add-locale-row">
+                                <button id="nytw_add_custom_selector" class="nytw-dashed-btn" type="button">
+                                    <i class="fa-solid fa-plus"></i> 添加选择器
+                                </button>
+                            </div>
+                            <div class="nytw-help nytw-help--nested">填 CSS 选择器（例如 <code>q</code>、<code>blockquote</code>、<code>#chat .mes_text blockquote</code>），选择器非法或为空会自动跳过。优先级高于其它细项，低于包裹字符。</div>
                         </div>
 
                         <!-- 按语言设置字体 (折叠面板) -->
@@ -766,15 +806,18 @@
                         <div class="nytw-help">
                             <strong>全局字体：</strong><br/>
                             影响 SillyTavern 整体界面字体，优先级低于聊天正文、对话和自定义包裹字体。<br/>
-                            「正文 + 界面」只接管酒馆已知界面区域（顶栏、设置抽屉、扩展程序面板、弹窗、输入区等）；<br/>
+                            「只作用于界面」只接管酒馆已知界面区域（顶栏、设置抽屉、扩展程序面板、弹窗、输入区等）；<br/>
                             「全部文字（含自定义界面）」接管正文以外的所有文字，包括没被列进区域的自定义浮层/第三方界面。<br/>
-                            两种范围都不会覆盖聊天正文、对话和包裹字体。<br/><br/>
+                            聊天正文始终由「正文字体」控制（留空时用全局字体兜底），对话/包裹字体也始终优先。<br/><br/>
                             <strong>正文字体：</strong><br/>
                             设置聊天消息的全局默认字体。留空则使用主题默认字体。<br/><br/>
                             <strong>对话字体：</strong><br/>
                             设置引号内对话内容的专用字体。支持中文引号（“ ”）、英文引号（" "）等；文字动画开启时，也会复用这套对话识别范围。<br/><br/>
-                            <strong>优先级：</strong><br/>
-                            自定义包裹 > 按语言设置 > 对话字体 > 正文字体 > 全局字体。
+                            <strong>细分子字体 / 界面细项 / 自定义选择器：</strong><br/>
+                            角色名、斜体、粗体、行内代码、代码块、标题/顶栏、按钮/列表/输入框都可以单独指定字体；自定义选择器可给任意 CSS 选择器指定字体（最多 12 条，非法选择器自动跳过）。<br/><br/>
+                            <strong>优先级（高 → 低）：</strong><br/>
+                            自定义包裹（内联） > 自定义选择器 > 按语言设置 > 代码/角色名/斜体/粗体 > 对话字体 > 正文字体 > 全局字体（只作用于界面）。<br/>
+                            多语言字体和全局字体不会打架：全局字体不覆盖聊天正文，正文里按「多语言 > 正文」取字体。
                         </div>
                     </div>
 
@@ -791,7 +834,8 @@
                             <strong>特性：</strong><br/>
                             支持在同一句消息里混排多种字体，并可通过规则顺序处理重叠范围的优先级。<br/><br/>
                             <strong>优先级：</strong><br/>
-                            按语言设置 > 对话字体 > 正文字体。自定义包裹字符会覆盖多语言字体。<br/><br/>
+                            自定义包裹 > 自定义选择器 > 按语言设置 > 细节字体（代码/角色名/斜体/粗体）> 对话字体 > 正文字体。<br/>
+                            全局字体只作用于界面，不参与正文，所以不会和多语言字体冲突。<br/><br/>
                             <strong>提示：</strong><br/>
                             数字/标点若未单独配置，会自动跟随前一段语言的字体（减少视觉断裂）。
                         </div>
@@ -811,7 +855,7 @@
                             设定起始符号（如 <code>『</code>）和结束符号（如 <code>』</code>）。<br/>
                             聊天中被这些符号包裹的内容将应用指定字体；可在阅读样式中继续单独调节这类文本的字号和字距。<br/><br/>
                             <strong>优先级：</strong><br/>
-                            自定义包裹 > 按语言设置 > 对话字体 > 正文字体。
+                            自定义包裹 > 自定义选择器 > 按语言设置 > 细节字体 > 对话字体 > 正文字体。
                         </div>
                     </div>
 

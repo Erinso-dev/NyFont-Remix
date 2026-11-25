@@ -184,7 +184,13 @@ function mergeImportedFontRecords(importedFonts) {
         }
 
         if (index >= 0) {
-            next[index] = { ...next[index], ...font };
+            const existing = next[index] || {};
+            // 旧版配置/没有分类信息的条目：保留现有分类，不覆盖成「未分类」
+            const incomingTags = Array.isArray(font.tags) ? font.tags : null;
+            const keepTags = (incomingTags && incomingTags.length)
+                ? incomingTags
+                : (Array.isArray(existing.tags) ? existing.tags : []);
+            next[index] = { ...existing, ...font, tags: keepTags };
             updated++;
         } else {
             next.push(font);

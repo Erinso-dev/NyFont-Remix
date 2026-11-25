@@ -4038,3 +4038,10 @@
 .nytw-font-picker-popup[popover] .nytw-font-popup-header {
     background: var(--SmartThemeBlurTintColor, #2a2a2a);
 }
+
+/* 自定义选择器输入框：非法选择器标红 */
+.nytw-input.is-invalid,
+input.nytw-input.is-invalid {
+    border-color: rgba(224, 91, 91, 0.85) !important;
+    box-shadow: 0 0 0 1px rgba(224, 91, 91, 0.35) !important;
+}

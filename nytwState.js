@@ -34,7 +34,9 @@ const PRESET_FONTS = [
 export const DEFAULT_SETTINGS = {
     fontsEnabled: true,
     globalFont: '',
-    globalFontScope: 'ui',
+    globalFontScope: 'interface',
+    fontScopes: {},
+    customFontSelectors: [],
     bodyFont: '',
     dialogueFont: '',
     customFont: '',
@@ -218,10 +220,41 @@ export function clampOptionalFontSize(value) {
     return Math.round(clamped * 2) / 2; // 0.5px steps
 }
 
+export const FONT_SCOPE_KEYS = ['nameText', 'italic', 'strong', 'codeInline', 'codeBlock', 'heading', 'uiButtons'];
+
+export function normalizeFontScopes(raw) {
+    const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+    const out = {};
+    for (const key of FONT_SCOPE_KEYS) {
+        out[key] = String(source[key] ?? '').trim().slice(0, 240);
+    }
+    return out;
+}
+
+export function normalizeCustomFontSelectors(raw) {
+    if (!Array.isArray(raw)) return [];
+    const out = [];
+    const seen = new Set();
+    for (const item of raw) {
+        if (!item || typeof item !== 'object') continue;
+        const selector = String(item.selector ?? '').trim().slice(0, 240);
+        const font = String(item.font ?? '').trim().slice(0, 240);
+        if (!selector && !font) continue;
+        let id = String(item.id ?? '').trim().slice(0, 60);
+        if (!id || seen.has(id)) id = `cs_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+        seen.add(id);
+        out.push({ id, selector, font });
+        if (out.length >= 12) break;
+    }
+    return out;
+}
+
 export function normalizeGlobalFontScope(value) {
     const raw = String(value || '').trim();
-    if (raw === 'body' || raw === 'ui' || raw === 'all') return raw;
-    return 'ui';
+    // 旧值迁移：body（只作用正文，已由正文字体取代）/ ui（正文+界面）都归到「只作用于界面」
+    if (raw === 'body' || raw === 'ui') return 'interface';
+    if (raw === 'interface' || raw === 'all') return raw;
+    return 'interface';
 }
 
 export function clampOptionalLetterSpacing(value) {
@@ -371,6 +404,8 @@ function applyDefaultSettings() {
     settings.textAnimDialoguePeriod = clampTextAnimPeriod(settings.textAnimDialoguePeriod);
     settings.readingStyleEnabled = settings.readingStyleEnabled === true;
     settings.globalFontScope = normalizeGlobalFontScope(settings.globalFontScope);
+    settings.fontScopes = normalizeFontScopes(settings.fontScopes);
+    settings.customFontSelectors = normalizeCustomFontSelectors(settings.customFontSelectors);
     settings.overallFontSize = clampOptionalFontSize(settings.overallFontSize);
     settings.overallLetterSpacing = clampOptionalLetterSpacing(settings.overallLetterSpacing);
     settings.overallLineHeight = clampOptionalLineHeight(settings.overallLineHeight);

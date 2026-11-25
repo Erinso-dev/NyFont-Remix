@@ -945,15 +945,100 @@ const GLOBAL_FONT_TEXT_EXCLUSIONS = ':not([class*="fa-"]):not([class^="fa"]):not
 
 function buildGlobalFontScopeCss(globalFontCss, scope) {
     if (!globalFontCss) return '';
-    if (scope !== 'ui' && scope !== 'all') return '';
+    if (scope !== 'interface' && scope !== 'all') return '';
     const lines = ['\n/* Global Font Scope */\n'];
-    // 变量兜底：NVWA 这类美化用 var(--mainFontFamily) 写字
-    lines.push(`html.${GLOBAL_FONT_ON_CLASS}{--font-main:${globalFontCss} !important;--mainFontFamily:${globalFontCss} !important;}`);
-    lines.push(`html.${GLOBAL_FONT_ON_CLASS} body{--font-main:${globalFontCss} !important;--mainFontFamily:${globalFontCss} !important;}`);
+    if (scope === 'all') {
+        // 「全部文字」：变量兜底 + 全页通配（正文子树仍排除，正文字体/对话/包裹优先）
+        lines.push(`html.${GLOBAL_FONT_ON_CLASS}{--font-main:${globalFontCss} !important;--mainFontFamily:${globalFontCss} !important;}`);
+        lines.push(`html.${GLOBAL_FONT_ON_CLASS} body{--font-main:${globalFontCss} !important;--mainFontFamily:${globalFontCss} !important;}`);
+    }
     const uiScopeExpanded = UI_SCOPE_SELECTORS.flatMap((selector) => [selector, `${selector} *`]).join(', ');
-    const targets = scope === 'ui' ? `:where(${uiScopeExpanded})` : ':where(*, * *)';
+    const targets = scope === 'interface' ? `:where(${uiScopeExpanded})` : ':where(*, * *)';
     lines.push(`body:not(#nytw-font-force-a):not(#nytw-font-force-b):not(#nytw-font-force-c) ${targets}${GLOBAL_FONT_TEXT_EXCLUSIONS}{font-family:${globalFontCss} !important;}`);
     return lines.join('\n');
+}
+
+/* ---------------- 细分子字体（角色名 / 斜体 / 粗体 / 代码 / 标题 / 控件 / 自定义选择器） ---------------- */
+
+const DETAIL_FONT_SCOPES = [
+    { key: 'nameText', selectors: ['#chat .mes .name_text'] },
+    { key: 'italic', selectors: ['#chat .mes_text em', '#chat .mes_text i'] },
+    { key: 'strong', selectors: ['#chat .mes_text strong', '#chat .mes_text b'] },
+    { key: 'codeInline', selectors: ['#chat .mes_text code:not(pre code)'] },
+    { key: 'codeBlock', selectors: ['#chat .mes_text pre', '#chat .mes_text pre code'] },
+];
+
+const INTERFACE_FONT_SCOPES = [
+    {
+        key: 'heading',
+        selectors: [
+            '#top-bar h2', '#top-bar h3', '#top-settings-holder h3', '#top-settings-holder h4',
+            '.drawer-content h3', '.drawer-content h4', '.inline-drawer-header b', '#rm_button_selected_ch h2',
+        ],
+    },
+    {
+        key: 'uiButtons',
+        selectors: [
+            '#top-bar button', '#top-bar .menu_button', '#top-settings-holder button',
+            '#top-settings-holder .menu_button', '.drawer-content button', '.drawer-content .menu_button',
+            '.drawer-content select', '.drawer-content input[type="text"]', '.drawer-content textarea',
+            '.drawer-content .list-group-item',
+        ],
+    },
+];
+
+function boostInterfaceSelector(selector) {
+    return `${selector}:not(#nytw-detail-a):not(#nytw-detail-b):not(#nytw-detail-c):not(#nytw-detail-d):not(#nytw-detail-e)`;
+}
+
+function buildDetailFontCss(scopeFontCss) {
+    let out = '';
+    for (const def of DETAIL_FONT_SCOPES) {
+        const font = scopeFontCss[def.key];
+        if (!font) continue;
+        out += `\n${def.selectors.map((selector) => `${forceChatSelector(selector)}:not(#nytw-detail-a):not(#nytw-detail-b)`).join(',')}{font-family:${font} !important;}`;
+    }
+    return out;
+}
+
+function buildInterfaceFontCss(scopeFontCss) {
+    let out = '';
+    for (const def of INTERFACE_FONT_SCOPES) {
+        const font = scopeFontCss[def.key];
+        if (!font) continue;
+        out += `\n${def.selectors.map(boostInterfaceSelector).join(',')}{font-family:${font} !important;}`;
+    }
+    return out;
+}
+
+function sanitizeCustomSelectorList(raw) {
+    const rawText = String(raw || '').trim();
+    if (!rawText || rawText.length > 240) return [];
+    if (/[{};@]|javascript:/i.test(rawText)) return [];
+    const items = rawText.split(',').map((part) => part.trim()).filter(Boolean).slice(0, 6);
+    return items.filter((selector) => {
+        try {
+            document.querySelector(selector);
+            return true;
+        } catch {
+            return false;
+        }
+    });
+}
+
+function buildCustomSelectorFontCss(entries) {
+    let out = '';
+    for (const entry of entries) {
+        const font = entry?.font;
+        if (!font) continue;
+        const items = sanitizeCustomSelectorList(entry.selector);
+        if (!items.length) continue;
+        const elementSelectors = items.map((selector) => `:is(${selector}):not(#nytw-custom-fa):not(#nytw-custom-fb):not(#nytw-custom-fc):not(#nytw-custom-fd):not(#nytw-custom-fe):not(#nytw-custom-ff)`);
+        const descendantSelectors = items.map((selector) => `:is(${selector}) :where(*:not([class*="fa-"]):not([class^="fa"]):not(code):not(pre):not(kbd):not(samp)):not(#nytw-custom-fa):not(#nytw-custom-fb):not(#nytw-custom-fc):not(#nytw-custom-fd):not(#nytw-custom-fe):not(#nytw-custom-ff)`);
+        out += `\n${elementSelectors.join(',')}{font-family:${font} !important;}`;
+        out += `\n${descendantSelectors.join(',')}{font-family:${font} !important;}`;
+    }
+    return out;
 }
 
 // 字体解析缓存：换字体时只重新解析变化的那一项，避免每次都重新校验字体
@@ -1034,6 +1119,30 @@ async function applyFontSettings() {
         localeFontNames.push(...parseFontFamilyList(font));
     }
 
+    // 细分子字体 + 自定义选择器字体（都按原始字符串缓存解析结果）
+    const detailScopeFontCss = {};
+    const detailFontFamilies = [];
+    for (const def of [...DETAIL_FONT_SCOPES, ...INTERFACE_FONT_SCOPES]) {
+        const rawFont = String(settings.fontScopes?.[def.key] || '').trim();
+        if (!rawFont) continue;
+        const resolved = await resolveFontCssCached(rawFont, '细分字体');
+        if (resolved?.css) {
+            detailScopeFontCss[def.key] = resolved.css;
+            detailFontFamilies.push(...(resolved.families || []));
+        }
+    }
+    const customSelectorFonts = [];
+    for (const entry of (Array.isArray(settings.customFontSelectors) ? settings.customFontSelectors : [])) {
+        const selector = String(entry?.selector || '').trim();
+        const rawFont = String(entry?.font || '').trim();
+        if (!selector || !rawFont) continue;
+        const resolved = await resolveFontCssCached(rawFont, '自定义选择器');
+        if (resolved?.css) {
+            customSelectorFonts.push({ selector, font: resolved.css });
+            detailFontFamilies.push(...(resolved.families || []));
+        }
+    }
+
     const families = [
         ...resolvedGlobal.families,
         ...resolvedBody.families,
@@ -1041,6 +1150,7 @@ async function applyFontSettings() {
         ...resolvedCustom.families,
         ...resolvedCustomRules.flatMap((r) => r.families),
         ...localeFontNames,
+        ...detailFontFamilies,
     ];
 
     const externalCssUrls = collectExternalFontCssUrlsForFamilies(families);
@@ -1060,8 +1170,8 @@ async function applyFontSettings() {
 
     if (globalFontCss) {
         const globalFontScope = normalizeGlobalFontScope(settings.globalFontScope);
-        // 「只作用正文」时不动界面；全局字体只作为正文没设字体时的兜底
-        if (globalFontScope !== 'body') {
+        if (globalFontScope === 'all') {
+            // 「全部文字」：body 全局规则 + 全页通配
             css += '\n/* Global Font Override */\n';
             css += `\nbody{font-family:${globalFontCss} !important;}`;
             css += `\n#sillytavern{font-family:${globalFontCss} !important;}`;
@@ -1075,8 +1185,8 @@ async function applyFontSettings() {
                 '.font-family-reset select,.font-family-reset textarea',
                 `{font-family:${globalFontCss} !important;}`,
             ].join('');
-            css += buildGlobalFontScopeCss(globalFontCss, globalFontScope);
         }
+        css += buildGlobalFontScopeCss(globalFontCss, globalFontScope);
     }
 
     // 聊天正文：美化主题常用高权重 !important 规则锁字体，这里用提权选择器强制覆盖。
@@ -1144,6 +1254,10 @@ async function applyFontSettings() {
     }
 
     css += buildReadingPreviewFontCss(globalFontCss, bodyFontCss, dialogueFontCss);
+
+    css += buildDetailFontCss(detailScopeFontCss);
+    css += buildInterfaceFontCss(detailScopeFontCss);
+    css += buildCustomSelectorFontCss(customSelectorFonts);
 
     css += '\n/* Scoped typography overrides for locale/custom font ranges */\n';
     css += `\n${forceChatSelector(`#chat .mes_text [${LOCALE_FONT_ATTR}]`)}{font-size:var(--nytw-locale-font-size) !important;letter-spacing:var(--nytw-locale-letter-spacing) !important;}`;
@@ -1218,7 +1332,7 @@ async function applyFontSettings() {
 
     // 纯 CSS 生效：只切一个 html class，不再做任何运行时检测/内联字体
     const appliedGlobalFontScope = normalizeGlobalFontScope(settings.globalFontScope);
-    if (globalFontCss && appliedGlobalFontScope !== 'body') {
+    if (globalFontCss && appliedGlobalFontScope === 'all') {
         document.documentElement.classList.add(GLOBAL_FONT_ON_CLASS);
     } else {
         document.documentElement.classList.remove(GLOBAL_FONT_ON_CLASS);
