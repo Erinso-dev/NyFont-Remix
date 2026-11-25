@@ -528,6 +528,9 @@ function buildReadingStyleCss() {
     const padDeclarations = [];
     if (hasReadingStyleValue(values.readingPadLeft) || hasReadingStyleValue(values.readingPadRight)) {
         // 正值：内缩（padding）；负值：外扩（负 margin）
+        // 关键：padding 算进美化给的那个宽度里（border-box），
+        // 否则 padding 会把盒子撑大，从而改变列的宽度/位置——看起来就是整列往一边跑。
+        padDeclarations.push('box-sizing:border-box !important;');
         padDeclarations.push('padding-left:max(0em,var(--nytw-pad-left,0)) !important;');
         padDeclarations.push('padding-right:max(0em,var(--nytw-pad-right,0)) !important;');
         padDeclarations.push('margin-left:min(0em,var(--nytw-pad-left,0)) !important;');

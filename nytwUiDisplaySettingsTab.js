@@ -948,6 +948,18 @@ export function initDisplaySettingsTab() {
         setPlaceholder(dialogueTextIndentEl, formatBase(dialogueBases.textIndentEm), '继承');
         setPlaceholder(readingPadLeftEl, '0', '继承');
         setPlaceholder(readingPadRightEl, '0', '继承');
+
+        // 正文宽度：继承「自动」时显示实测 ch（如 42ch），步进器就从它起算
+        let inheritedWidthCh = null;
+        if (bodyProbe instanceof HTMLElement && bodyProbe.clientWidth > 0) {
+            const chWidth = measureChWidthFor(bodyProbe);
+            if (chWidth && chWidth > 0) inheritedWidthCh = bodyProbe.clientWidth / chWidth;
+        }
+        setPlaceholder(
+            contentWidthEl,
+            inheritedWidthCh === null ? '' : `${Math.round(inheritedWidthCh)}ch`,
+            '自动',
+        );
     };
 
     // 排版设置改动时，除了重建「阅读样式」（.mes_text / 对话 / 包裹），
