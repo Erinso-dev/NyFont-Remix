@@ -957,7 +957,7 @@ export function initDisplaySettingsTab() {
         }
         setPlaceholder(
             contentWidthEl,
-            inheritedWidthCh === null ? '' : `${Math.round(inheritedWidthCh)}ch`,
+            inheritedWidthCh === null ? '' : String(Math.round(inheritedWidthCh)),
             '自动',
         );
     };
