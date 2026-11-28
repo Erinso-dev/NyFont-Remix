@@ -451,6 +451,10 @@ function ensureExternalStylesheetLoadPromise(link, href) {
             settled = true;
             cleanup();
             link.setAttribute(EXTERNAL_FONT_LINK_STATUS_ATTR, ok ? 'loaded' : 'error');
+            // 失败就把节点移除，下一次应用会重新创建并重试，而不是一直复用 error 节点。
+            if (!ok) {
+                try { link.remove(); } catch { /* ignore */ }
+            }
             resolve({ ok, reason: String(reason || '') });
         };
 
@@ -469,7 +473,8 @@ function ensureExternalStylesheetLoadPromise(link, href) {
     return promise;
 }
 
-function syncExternalFontStylesheets(requiredUrls) {
+function syncExternalFontStylesheets(requiredUrls, options = {}) {
+    const prune = options.prune !== false;
     const required = new Set();
     for (const url of requiredUrls || []) {
         const href = normalizeExternalStylesheetUrl(url);
@@ -492,6 +497,12 @@ function syncExternalFontStylesheets(requiredUrls) {
             continue;
         }
 
+        // 上次加载失败的链接不再复用：直接移除，下次重新建一个，避免第一次失败后永久卡在 error。
+        if (link.getAttribute(EXTERNAL_FONT_LINK_STATUS_ATTR) === 'error') {
+            link.remove();
+            continue;
+        }
+
         if (!link.getAttribute(EXTERNAL_FONT_LINK_STATUS_ATTR)) {
             try {
                 link.setAttribute(EXTERNAL_FONT_LINK_STATUS_ATTR, link.sheet ? 'loaded' : 'loading');
@@ -503,10 +514,14 @@ function syncExternalFontStylesheets(requiredUrls) {
         existingByHref.set(href, link);
     }
 
-    for (const [href, link] of existingByHref.entries()) {
-        if (!required.has(href)) {
-            link.remove();
-            externalStylesheetPromises.delete(href);
+    // 默认剪掉本次不需要的字体 CSS；字体校验时传 prune:false，
+    // 避免多个字体的校验同时进行时互相把对方的 link 删掉（会误报“加载超时”）。
+    if (prune || required.size === 0) {
+        for (const [href, link] of existingByHref.entries()) {
+            if (!required.has(href)) {
+                link.remove();
+                externalStylesheetPromises.delete(href);
+            }
         }
     }
 
@@ -946,7 +961,7 @@ async function ensureFontFamilyUsable(family) {
             setImportedFontIssue(imported.id, reason);
             return { ok: false, reason };
         }
-        syncExternalFontStylesheets([href]);
+        syncExternalFontStylesheets([href], { prune: false });
         const readiness = await ensureExternalFontStylesheetsReady([href]);
         const linkState = readiness.get(href);
         if (!linkState?.ok) {
