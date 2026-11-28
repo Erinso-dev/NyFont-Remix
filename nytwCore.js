@@ -982,7 +982,7 @@ const INTERFACE_FONT_SCOPES = [
         key: 'heading',
         selectors: [
             '#top-bar h2', '#top-bar h3', '#top-settings-holder h3', '#top-settings-holder h4',
-            '.drawer-content h3', '.drawer-content h4', '.inline-drawer-header b', '#rm_button_selected_ch h2',
+            '.drawer-content h3', '.drawer-content h4', '.inline-drawer-header b', '.inline-drawer-header strong', '#rm_button_selected_ch h2',
         ],
     },
     {
